@@ -1,0 +1,407 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		02F3B372289A9FFC00ADC971 /* yggdrasil.c in Sources */ = {isa = PBXBuildFile; fileRef = 02F3B371289A9FFC00ADC971 /* yggdrasil.c */; };
+		02F3B380289AA05400ADC971 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 02F3B37F289AA05400ADC971 /* main.c */; };
+		02F3B384289AA06400ADC971 /* libYggdrasil.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 02F3B368289A9F9A00ADC971 /* libYggdrasil.a */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		02F3B381289AA06000ADC971 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 02F3B360289A9F9A00ADC971 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 02F3B367289A9F9A00ADC971;
+			remoteInfo = Yggdrasil;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		02F3B375289AA02C00ADC971 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		02F3B368289A9F9A00ADC971 /* libYggdrasil.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libYggdrasil.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		02F3B370289A9FEC00ADC971 /* src */ = {isa = PBXFileReference; lastKnownFileType = folder; path = src; sourceTree = "<group>"; };
+		02F3B371289A9FFC00ADC971 /* yggdrasil.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = yggdrasil.c; path = src/yggdrasil/yggdrasil.c; sourceTree = "<group>"; };
+		02F3B377289AA02C00ADC971 /* Yggdrasil Example */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Yggdrasil Example"; sourceTree = BUILT_PRODUCTS_DIR; };
+		02F3B37F289AA05400ADC971 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = main.c; path = example/main.c; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		02F3B366289A9F9A00ADC971 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		02F3B374289AA02C00ADC971 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				02F3B384289AA06400ADC971 /* libYggdrasil.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		02F3B35F289A9F9A00ADC971 = {
+			isa = PBXGroup;
+			children = (
+				02F3B36F289A9FE200ADC971 /* Yggdrasil */,
+				02F3B37E289AA03800ADC971 /* Yggdrasil Example */,
+				02F3B369289A9F9A00ADC971 /* Products */,
+				02F3B383289AA06400ADC971 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		02F3B369289A9F9A00ADC971 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				02F3B368289A9F9A00ADC971 /* libYggdrasil.a */,
+				02F3B377289AA02C00ADC971 /* Yggdrasil Example */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		02F3B36F289A9FE200ADC971 /* Yggdrasil */ = {
+			isa = PBXGroup;
+			children = (
+				02F3B371289A9FFC00ADC971 /* yggdrasil.c */,
+				02F3B370289A9FEC00ADC971 /* src */,
+			);
+			name = Yggdrasil;
+			sourceTree = "<group>";
+		};
+		02F3B37E289AA03800ADC971 /* Yggdrasil Example */ = {
+			isa = PBXGroup;
+			children = (
+				02F3B37F289AA05400ADC971 /* main.c */,
+			);
+			name = "Yggdrasil Example";
+			sourceTree = "<group>";
+		};
+		02F3B383289AA06400ADC971 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		02F3B364289A9F9A00ADC971 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		02F3B367289A9F9A00ADC971 /* Yggdrasil */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 02F3B36C289A9F9A00ADC971 /* Build configuration list for PBXNativeTarget "Yggdrasil" */;
+			buildPhases = (
+				02F3B364289A9F9A00ADC971 /* Headers */,
+				02F3B365289A9F9A00ADC971 /* Sources */,
+				02F3B366289A9F9A00ADC971 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Yggdrasil;
+			productName = Yggdrasil;
+			productReference = 02F3B368289A9F9A00ADC971 /* libYggdrasil.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		02F3B376289AA02C00ADC971 /* Yggdrasil Example */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 02F3B37B289AA02C00ADC971 /* Build configuration list for PBXNativeTarget "Yggdrasil Example" */;
+			buildPhases = (
+				02F3B373289AA02C00ADC971 /* Sources */,
+				02F3B374289AA02C00ADC971 /* Frameworks */,
+				02F3B375289AA02C00ADC971 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				02F3B382289AA06000ADC971 /* PBXTargetDependency */,
+			);
+			name = "Yggdrasil Example";
+			productName = "Yggdrasil Example";
+			productReference = 02F3B377289AA02C00ADC971 /* Yggdrasil Example */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		02F3B360289A9F9A00ADC971 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1400;
+				TargetAttributes = {
+					02F3B367289A9F9A00ADC971 = {
+						CreatedOnToolsVersion = 14.0;
+					};
+					02F3B376289AA02C00ADC971 = {
+						CreatedOnToolsVersion = 14.0;
+					};
+				};
+			};
+			buildConfigurationList = 02F3B363289A9F9A00ADC971 /* Build configuration list for PBXProject "Yggdrasil" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 02F3B35F289A9F9A00ADC971;
+			productRefGroup = 02F3B369289A9F9A00ADC971 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				02F3B367289A9F9A00ADC971 /* Yggdrasil */,
+				02F3B376289AA02C00ADC971 /* Yggdrasil Example */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		02F3B365289A9F9A00ADC971 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				02F3B372289A9FFC00ADC971 /* yggdrasil.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		02F3B373289AA02C00ADC971 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				02F3B380289AA05400ADC971 /* main.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		02F3B382289AA06000ADC971 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 02F3B367289A9F9A00ADC971 /* Yggdrasil */;
+			targetProxy = 02F3B381289AA06000ADC971 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		02F3B36A289A9F9A00ADC971 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.4;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		02F3B36B289A9F9A00ADC971 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.4;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		02F3B36D289A9F9A00ADC971 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = W7Z6PLYMFN;
+				EXECUTABLE_PREFIX = lib;
+				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/src\"";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		02F3B36E289A9F9A00ADC971 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = W7Z6PLYMFN;
+				EXECUTABLE_PREFIX = lib;
+				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/src\"";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		02F3B37C289AA02C00ADC971 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = W7Z6PLYMFN;
+				ENABLE_HARDENED_RUNTIME = YES;
+				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/src\"";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		02F3B37D289AA02C00ADC971 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = W7Z6PLYMFN;
+				ENABLE_HARDENED_RUNTIME = YES;
+				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/src\"";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		02F3B363289A9F9A00ADC971 /* Build configuration list for PBXProject "Yggdrasil" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				02F3B36A289A9F9A00ADC971 /* Debug */,
+				02F3B36B289A9F9A00ADC971 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		02F3B36C289A9F9A00ADC971 /* Build configuration list for PBXNativeTarget "Yggdrasil" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				02F3B36D289A9F9A00ADC971 /* Debug */,
+				02F3B36E289A9F9A00ADC971 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		02F3B37B289AA02C00ADC971 /* Build configuration list for PBXNativeTarget "Yggdrasil Example" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				02F3B37C289AA02C00ADC971 /* Debug */,
+				02F3B37D289AA02C00ADC971 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 02F3B360289A9F9A00ADC971 /* Project object */;
+}
