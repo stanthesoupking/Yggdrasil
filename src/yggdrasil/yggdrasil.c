@@ -32,5 +32,6 @@ abort();
 #include "ygg_cpu.c"
 #include "ygg_semaphore.c"
 #include "ygg_spinlock.c"
+#include "ygg_fiber_queue.c"
 #include "ygg_coordinator.c"
 

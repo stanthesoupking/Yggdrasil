@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "yggdrasil/yggdrasil.h"
 
@@ -15,7 +16,7 @@ void _fiber_visibility_check(Ygg_Fiber_Ctx* ctx) {
 	printf("_fiber_visibility_check: start\n");
 	
 	// Encode command buffer
-	Ygg_Lazy_Result* encode_result = ygg_coordinator_dispatch(ygg_fiber_coordinator(ctx), ygg_fiber("encode_visibility", _fiber_encode_buffer));
+	Ygg_Lazy_Result* encode_result = ygg_coordinator_dispatch(ygg_fiber_coordinator(ctx), ygg_fiber("encode_visibility", _fiber_encode_buffer), Ygg_Priority_Normal);
 	ygg_lazy_result_unwrap(ctx, encode_result);
 	ygg_lazy_result_release(encode_result);
 	
@@ -30,8 +31,10 @@ int main(int argc, const char * argv[]) {
 	
 	Ygg_Coordinator* coordinator = ygg_coordinator_new(parameters);
 			
-	Ygg_Lazy_Result* visibility_checking_result = ygg_coordinator_dispatch(coordinator, ygg_fiber("visibility_check", _fiber_visibility_check));
-	ygg_lazy_result_release(visibility_checking_result);
+	for (int i = 0; i < 256; ++i) {
+		Ygg_Lazy_Result* visibility_checking_result = ygg_coordinator_dispatch(coordinator, ygg_fiber("visibility_check", _fiber_visibility_check), Ygg_Priority_Normal);
+		ygg_lazy_result_release(visibility_checking_result);
+	}
 	
 	sleep(10000);
 	

@@ -2,6 +2,7 @@
 // MARK: Macros
 
 #define ygg_inline static inline
+#define ygg_internal static inline
 #define ygg_force_inline static inline __attribute__((always_inline))
 
 // MARK: Fiber
@@ -44,7 +45,14 @@ Ygg_Lazy_Result* ygg_lazy_result_retain(Ygg_Lazy_Result* result);
 void ygg_lazy_result_release(Ygg_Lazy_Result* result);
 void ygg_lazy_result_unwrap(Ygg_Fiber_Ctx* ctx, Ygg_Lazy_Result* result);
 
-Ygg_Lazy_Result* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fiber);
+typedef enum Ygg_Priority {
+	Ygg_Priority_Low = 0,
+	Ygg_Priority_Normal = 1,
+	Ygg_Priority_High = 2,
+} Ygg_Priority;
+#define YGG_PRIORITY_COUNT 3
+
+Ygg_Lazy_Result* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fiber, Ygg_Priority priority);
 
 // Current fiber functions
 void ygg_fiber_increment_counter(Ygg_Fiber_Ctx* ctx, unsigned int n);

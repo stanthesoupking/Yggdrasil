@@ -4,6 +4,8 @@
 
 #define YGG_MAXIMUM_FIBERS 1024
 
+#define YGG_QUEUE_SIZE 1024
+
 typedef struct Ygg_Fiber_Ctx {
 	Ygg_Coordinator* coordinator;
 	Ygg_Fiber_Handle fiber_handle;
@@ -40,16 +42,13 @@ typedef struct Ygg_Fiber_Internal {
 	
 	// TODO: Allocate elsewhere to decrease struct size
 	void* stack;
-	
-	void* return_stack_pointer;
-	
+		
 	// TODO: Linked list with pool to support arbitrary array length
 	Ygg_Fiber_Handle successors[16];
 	unsigned int successor_count;
 } Ygg_Fiber_Internal;
 
 typedef struct Ygg_Thread {
-	void* stack;
 	unsigned int thread_index;
 	pthread_t thread;
 	Ygg_Coordinator* coordinator;
@@ -63,16 +62,9 @@ typedef struct Ygg_Coordinator {
 	
 	unsigned int fiber_freelist[YGG_MAXIMUM_FIBERS];
 	unsigned int fiber_freelist_length;
-	
-	void* stack_memory;
-	
-	struct {
-		Ygg_Semaphore semaphore;
-		Ygg_Spinlock spinlock;
-		Ygg_Fiber_Handle fiber_handles[YGG_MAXIMUM_FIBERS];
-		atomic_uint head;
-		unsigned int tail;
-	} fiber_queue;
+		
+	Ygg_Semaphore semaphore;
+	Ygg_Fiber_Queue fiber_queues[YGG_PRIORITY_COUNT];
 	
 	Ygg_Thread* threads;
 	unsigned int thread_count;
@@ -83,7 +75,7 @@ typedef struct Ygg_Coordinator {
 	sprintf(thread_label_full, "%s [%s]", thread_label_prefix, thread_label_postfix); \
 	pthread_setname_np(thread_label_full); \
 
-bool ygg_coordinator_pop_fiber_from_queue(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle* handle);
+ygg_internal bool ygg_coordinator_pop_fiber(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle* handle);
 Ygg_Fiber_Internal* ygg_coordinator_deref_fiber_handle(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle handle);
 void ygg_coordinator_fiber_release(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle handle);
 void ygg_fiber_decrement_counter(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle handle);
@@ -95,15 +87,15 @@ void* _ygg_thread(void* data) {
 	char thread_label_prefix[32];
 	char thread_label_postfix[128];
 	char thread_label_full[160];
-	sprintf(thread_label_prefix, "Yggdrassil %d", thread->thread_index);
+	sprintf(thread_label_prefix, "Yggdrasil %d", thread->thread_index);
 		
 	ygg_update_thread_label("Idle");
 	bool alive = true;
 	while (alive) {
 		Ygg_Fiber_Handle fiber_handle;
-		if (!ygg_coordinator_pop_fiber_from_queue(coordinator, &fiber_handle)) {
+		if (!ygg_coordinator_pop_fiber(coordinator, &fiber_handle)) {
 			// Wait for semaphore to update and tell us something has changed
-			ygg_semaphore_wait(&coordinator->fiber_queue.semaphore);
+			ygg_semaphore_wait(&coordinator->semaphore);
 			continue;
 		}
 		
@@ -158,31 +150,27 @@ void* _ygg_thread(void* data) {
 }
 
 Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
-	Ygg_Coordinator* coordinator = malloc(sizeof(Ygg_Coordinator));
+	Ygg_Coordinator* coordinator = calloc(sizeof(Ygg_Coordinator), 1);
 	
 	printf("Total stack memory = %.2fMB\n", (YGG_FIBER_STACK_SIZE * YGG_MAXIMUM_FIBERS) / (1024.0f * 1024.0f));
 	
 	*coordinator = (Ygg_Coordinator) {
 		.fiber_count = 0,
 		.fiber_freelist_length = 0,
-		
-		.stack_memory = malloc(YGG_FIBER_STACK_SIZE * YGG_MAXIMUM_FIBERS),
-		
+				
 		.thread_count = parameters.thread_count,
-		
-		.fiber_queue = {
-			.head = 0,
-			.tail = 0,
-		},
 	};
 	
-	ygg_semaphore_init(&coordinator->fiber_queue.semaphore);
+	ygg_semaphore_init(&coordinator->semaphore);
+	
+	for (unsigned int queue_index = 0; queue_index < YGG_PRIORITY_COUNT; ++queue_index) {
+		ygg_fiber_queue_init(coordinator->fiber_queues + queue_index, YGG_QUEUE_SIZE);
+	}
 	
 	coordinator->threads = malloc(sizeof(Ygg_Thread) * parameters.thread_count);
 	for (unsigned int thread_index = 0; thread_index < parameters.thread_count; ++thread_index) {
 		Ygg_Thread* thread = coordinator->threads + thread_index;
 		*thread = (Ygg_Thread) {
-			.stack = calloc(YGG_FIBER_STACK_SIZE, 1),
 			.thread_index = thread_index,
 			.coordinator = coordinator,
 		};
@@ -192,29 +180,23 @@ Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
 	return coordinator;
 }
 void ygg_coordinator_destroy(Ygg_Coordinator* coordinator) {
+	for (unsigned int queue_index = 0; queue_index < YGG_PRIORITY_COUNT; ++queue_index) {
+		ygg_fiber_queue_deinit(coordinator->fiber_queues + queue_index);
+	}
 	*coordinator = (Ygg_Coordinator) { };
 	free(coordinator);
 }
 
-void ygg_coordinator_push_fiber_to_queue(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle handle) {
-	ygg_spinlock_lock(&coordinator->fiber_queue.spinlock);
-	coordinator->fiber_queue.fiber_handles[(coordinator->fiber_queue.tail++) % YGG_MAXIMUM_FIBERS] = handle;
-	ygg_spinlock_unlock(&coordinator->fiber_queue.spinlock);
-	
-	ygg_semaphore_signal(&coordinator->fiber_queue.semaphore);
+ygg_internal void ygg_coordinator_push_fiber(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle handle, Ygg_Priority priority) {
+	ygg_fiber_queue_push(coordinator->fiber_queues + priority, handle);
+	ygg_semaphore_signal(&coordinator->semaphore);
 }
-
-bool ygg_coordinator_pop_fiber_from_queue(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle* handle) {
-	unsigned int head = coordinator->fiber_queue.head;
-	if (head == coordinator->fiber_queue.tail) {
-		return false;
+ygg_internal bool ygg_coordinator_pop_fiber(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle* handle) {
+	for (int queue_index = YGG_PRIORITY_COUNT - 1; queue_index > 0; --queue_index) {
+		if (ygg_fiber_queue_pop(coordinator->fiber_queues + queue_index, handle)) {
+			return true;
+		}
 	}
-	
-	if (atomic_compare_exchange_strong(&coordinator->fiber_queue.head, &head, head + 1)) {
-		*handle = coordinator->fiber_queue.fiber_handles[head % YGG_MAXIMUM_FIBERS];
-		return true;
-	}
-
 	return false;
 }
 
@@ -238,7 +220,7 @@ void ygg_coordinator_fiber_release(Ygg_Coordinator* coordinator, Ygg_Fiber_Handl
 	}
 }
 
-Ygg_Lazy_Result* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fiber) {
+Ygg_Lazy_Result* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fiber, Ygg_Priority priority) {
 	unsigned int fiber_index;
 	if (coordinator->fiber_freelist_length > 0) {
 		fiber_index = coordinator->fiber_freelist[--coordinator->fiber_freelist_length];
@@ -274,7 +256,7 @@ Ygg_Lazy_Result* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fibe
 		.stack = calloc(YGG_FIBER_STACK_SIZE, 1),
 	};
 	
-	ygg_coordinator_push_fiber_to_queue(coordinator, handle);
+	ygg_coordinator_push_fiber(coordinator, handle, priority);
 	
 	return &internal->lazy_result;
 }
@@ -333,7 +315,8 @@ void ygg_fiber_decrement_counter(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle 
 	ygg_assert(previous > 0, "Don't underflow");
 	
 	if (previous == 1) {
-		ygg_coordinator_push_fiber_to_queue(coordinator, handle);
+		// TODO: Mark as ready in executing thread
+//		ygg_coordinator_push_fiber_to_queue(coordinator, handle);
 	}
 }
 void ygg_fiber_wait_for_counter(Ygg_Fiber_Ctx* ctx) {
