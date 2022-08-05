@@ -29,9 +29,12 @@ printf("\n"); \
 printf("------------------------------------------------------------\n"); \
 abort();
 
+#include "yggdrasil/coordinator/ygg_coordinator.h"
+#include "yggdrasil/worker/ygg_worker_thread.h"
+
 #include "ygg_cpu.c"
 #include "ygg_semaphore.c"
 #include "ygg_spinlock.c"
 #include "ygg_fiber_queue.c"
-#include "ygg_coordinator.c"
-
+#include "yggdrasil/coordinator/ygg_coordinator.c"
+#include "yggdrasil/worker/ygg_worker_thread.c"

@@ -24,9 +24,8 @@ void _fiber_visibility_check(Ygg_Fiber_Ctx* ctx) {
 }
 
 int main(int argc, const char * argv[]) {
-	// TODO: Add support for multiple threads
 	Ygg_Coordinator_Parameters parameters = {
-		.thread_count = 1,
+		.thread_count = 8,
 	};
 	
 	Ygg_Coordinator* coordinator = ygg_coordinator_new(parameters);
