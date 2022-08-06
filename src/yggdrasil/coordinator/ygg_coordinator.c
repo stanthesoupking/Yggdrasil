@@ -22,6 +22,13 @@ typedef struct Ygg_Context {
 	Ygg_Semaphore semaphore;
 } Ygg_Context;
 
+typedef struct Ygg_Future_Waiting_Entry Ygg_Future_Waiting_Entry;
+typedef struct Ygg_Future_Waiting_Entry {
+	Ygg_Context* context;
+	Ygg_Future_Waiting_Entry* next;
+} Ygg_Future_Waiting_Entry;
+ygg_pool(Ygg_Future_Waiting_Entry, Ygg_Future_Waiting_Entry_Pool, ygg_future_waiting_entry_pool);
+
 typedef struct Ygg_Future {
 	Ygg_Coordinator* coordinator;
 	Ygg_Spinlock spinlock;
@@ -31,9 +38,7 @@ typedef struct Ygg_Future {
 	
 	void* result;
 	
-	// TODO: Linked list with pool to support arbitrary array length
-	Ygg_Context* waiting[16];
-	unsigned int waiting_count;
+	Ygg_Future_Waiting_Entry* waiting;
 } Ygg_Future;
 ygg_pool(Ygg_Future, Ygg_Future_Pool, ygg_future_pool);
 
@@ -65,7 +70,6 @@ typedef struct Ygg_Fiber_Internal {
 	Ygg_CPU_State resume_state;
 	Ygg_CPU_State suspend_state;
 	
-	// TODO: Allocate elsewhere to decrease struct size
 	void* stack;
 } Ygg_Fiber_Internal;
 
@@ -73,8 +77,9 @@ typedef struct Ygg_Coordinator {
 	Ygg_Fiber_Internal fiber_storage[YGG_MAXIMUM_FIBERS];
 	unsigned int fiber_count;
 	
-	Ygg_Spinlock future_pool_spinlock;
+	Ygg_Spinlock future_pool_spinlock; // guards access to `future_pool` and `future_waiting_entry_pool`
 	Ygg_Future_Pool future_pool;
+	Ygg_Future_Waiting_Entry_Pool future_waiting_entry_pool;
 	
 	unsigned int fiber_freelist[YGG_MAXIMUM_FIBERS];
 	unsigned int fiber_freelist_length;
@@ -103,6 +108,7 @@ Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
 	};
 	
 	ygg_future_pool_init(&coordinator->future_pool, YGG_MAXIMUM_FIBERS);
+	ygg_future_waiting_entry_pool_init(&coordinator->future_waiting_entry_pool, YGG_MAXIMUM_FIBERS);
 	
 	for (unsigned int fiber_index = 0; fiber_index < YGG_MAXIMUM_FIBERS; ++fiber_index) {
 		coordinator->fiber_freelist[YGG_MAXIMUM_FIBERS - fiber_index - 1] = fiber_index;
@@ -339,6 +345,12 @@ void ygg_future_release(Ygg_Future* future) {
 		
 		Ygg_Coordinator* coordinator = future->coordinator;
 		ygg_spinlock_lock(&coordinator->future_pool_spinlock);
+		Ygg_Future_Waiting_Entry* entry = future->waiting;
+		while (entry != NULL) {
+			Ygg_Future_Waiting_Entry* next = entry->next;
+			ygg_future_waiting_entry_pool_release(&coordinator->future_waiting_entry_pool, entry);
+			entry = next;
+		}
 		ygg_future_pool_release(&coordinator->future_pool, future);
 		ygg_spinlock_unlock(&coordinator->future_pool_spinlock);
 	}
@@ -350,7 +362,23 @@ void ygg_future_wait(Ygg_Future* future, Ygg_Context* context) {
 		return;
 	} else {
 		ygg_increment_counter(context, 1);
-		future->waiting[future->waiting_count++] = context;
+		
+		Ygg_Coordinator* coordinator = future->coordinator;
+		
+		ygg_spinlock_lock(&coordinator->future_pool_spinlock);
+		Ygg_Future_Waiting_Entry* entry = ygg_future_waiting_entry_pool_acquire(&coordinator->future_waiting_entry_pool);
+		ygg_spinlock_unlock(&coordinator->future_pool_spinlock);
+
+		*entry = (Ygg_Future_Waiting_Entry) {
+			.context = context,
+		};
+		if (future->waiting == NULL) {
+			future->waiting = entry;
+		} else {
+			entry->next = future->waiting;
+			future->waiting = entry;
+		}
+		
 		ygg_spinlock_unlock(&future->spinlock);
 		ygg_wait_for_counter(context);
 	}
@@ -363,8 +391,12 @@ void ygg_future_fulfill(Ygg_Future* future) {
 	ygg_spinlock_lock(&future->spinlock);
 	ygg_assert(!future->fulfilled, "Future has already been fulfilled.");
 	future->fulfilled = true;
-	for (unsigned int i = 0; i < future->waiting_count; ++i) {
-		ygg_fiber_decrement_counter(future->waiting[i], 1);
+	
+	Ygg_Future_Waiting_Entry* entry = future->waiting;
+	while (entry != NULL) {
+		ygg_fiber_decrement_counter(entry->context, 1);
+		entry = entry->next;
 	}
+	
 	ygg_spinlock_unlock(&future->spinlock);
 }
