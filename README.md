@@ -1,9 +1,6 @@
 # Yggdrasil
-High Performance Fibers in C
-
-Currently only compiles under a GNU-C-compatible compiler.
-
-### Supported Architectures
-| ARM64 | ARM | AMD64 |
-|:-----:|:---:|:-----:|
-| ✅ | ❌ | ❌ |
+Userland fiber library  
+No warranty; use at your own risk.
+  
+Supported compilers: clang, gnu-c  
+Supported architectures: arm64
