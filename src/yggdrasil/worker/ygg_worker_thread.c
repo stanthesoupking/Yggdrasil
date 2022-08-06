@@ -3,9 +3,7 @@ typedef struct Ygg_Worker_Thread {
 	unsigned int thread_index;
 	pthread_t thread;
 	Ygg_Coordinator* coordinator;
-	
-	Ygg_Fiber_Ctx current_ctx;
-	
+		
 	Ygg_Fiber_Queue delayed_queue;
 } Ygg_Worker_Thread;
 
@@ -68,18 +66,14 @@ void* _ygg_thread(void* data) {
 	while (alive) {
 		// Get next fiber
 		Ygg_Fiber_Handle fiber_handle;
-		if (!ygg_worker_thread_next_fiber(thread, &fiber_handle)) {
+		ygg_semaphore_lock(&coordinator->semaphore);
+		while(!ygg_worker_thread_next_fiber(thread, &fiber_handle)) {
 			// Wait for coordinator semaphore to update and tell us something has changed
 			ygg_semaphore_wait(&coordinator->semaphore);
-			continue;
 		}
+		ygg_semaphore_unlock(&coordinator->semaphore);
 
 		Ygg_Fiber_Internal* fiber_internal = ygg_coordinator_deref_fiber_handle(coordinator, fiber_handle);
-		
-		thread->current_ctx = (Ygg_Fiber_Ctx) {
-			.coordinator = coordinator,
-			.fiber_handle = fiber_handle,
-		};
 		
 		ygg_update_thread_label("Fiber (index: %d) '%s'", fiber_handle.index, fiber_internal->fiber.label);
 		if (fiber_internal->state == Ygg_Fiber_Internal_State_Not_Started) {
@@ -95,7 +89,7 @@ void* _ygg_thread(void* data) {
 			ygg_cpu_state_store(fiber_internal->suspend_state);
 			if (fiber_internal->state == Ygg_Fiber_Internal_State_Running) {
 				void* sp = fiber_internal->stack + YGG_FIBER_STACK_SIZE;
-				void* ctx = &thread->current_ctx;
+				void* ctx = &fiber_internal->context;
 				ygg_fiber_boot(sp, fiber_internal->fiber.func, ctx);
 								
 				printf("Thread %d: Completed fiber '%s'.\n", thread->thread_index, fiber_internal->fiber.label);
@@ -108,7 +102,9 @@ void* _ygg_thread(void* data) {
 			}
 		} else {
 			printf("Thread %d: Resuming fiber '%s'...\n", thread->thread_index, fiber_internal->fiber.label);
+			ygg_spinlock_lock(&fiber_internal->spinlock);
 			fiber_internal->state = Ygg_Fiber_Internal_State_Running;
+			ygg_spinlock_unlock(&fiber_internal->spinlock);
 			ygg_cpu_state_restore(fiber_internal->resume_state);
 		}
 		printf("Thread %d: Left fiber\n", thread->thread_index);
@@ -123,7 +119,7 @@ void* _ygg_thread(void* data) {
 void ygg_worker_thread_push_delayed_fiber(Ygg_Worker_Thread* thread, Ygg_Fiber_Handle handle) {
 	Ygg_Fiber_Internal* fiber_internal = ygg_coordinator_deref_fiber_handle(thread->coordinator, handle);
 	ygg_assert(fiber_internal->owner_thread == thread, "Fiber can only be pushed to execute on its owning thread");
-//	ygg_assert(fiber_internal->state == Ygg_Fiber_Internal_State_Suspended, "Fiber should be suspended");
+	ygg_assert(fiber_internal->state == Ygg_Fiber_Internal_State_Suspended, "Fiber should be suspended");
 	ygg_assert(fiber_internal->counter == 0, "Counter should be zero if the fiber is ready to resume");
 	ygg_fiber_queue_push(&thread->delayed_queue, handle);
 }

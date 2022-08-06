@@ -3,10 +3,23 @@
 #define YGG_MAXIMUM_FIBERS 1024
 #define YGG_QUEUE_SIZE 1024
 
-typedef struct Ygg_Fiber_Ctx {
+typedef enum Ygg_Context_Kind {
+	Ygg_Context_Kind_Fiber,
+	Ygg_Context_Kind_Blocking,
+} Ygg_Context_Kind;
+
+typedef struct Ygg_Context {
+	Ygg_Context_Kind kind;
 	Ygg_Coordinator* coordinator;
+	
+	// Ygg_Context_Kind_Fiber
 	Ygg_Fiber_Handle fiber_handle;
-} Ygg_Fiber_Ctx;
+	
+	// Ygg_Context_Kind_Blocking
+	Ygg_Spinlock spinlock;
+	atomic_uint counter;
+	Ygg_Semaphore semaphore;
+} Ygg_Context;
 
 typedef struct Ygg_Future {
 	Ygg_Coordinator* coordinator;
@@ -16,8 +29,8 @@ typedef struct Ygg_Future {
 	bool fulfilled;
 	
 	// TODO: Linked list with pool to support arbitrary array length
-	Ygg_Fiber_Handle waiting_fibers[16];
-	unsigned int waiting_fiber_count;
+	Ygg_Context* waiting[16];
+	unsigned int waiting_count;
 } Ygg_Future;
 ygg_pool(Ygg_Future, Ygg_Future_Pool, ygg_future_pool);
 
@@ -33,6 +46,8 @@ typedef struct Ygg_Fiber_Internal {
 	Ygg_Fiber_Internal_State state;
 	Ygg_Fiber fiber;
 	
+	Ygg_Context context;
+		
 	// Valid after the fiber has been started
 	Ygg_Worker_Thread* owner_thread;
 	
@@ -65,6 +80,8 @@ typedef struct Ygg_Coordinator {
 	
 	Ygg_Worker_Thread** worker_threads;
 	unsigned int worker_thread_count;
+	
+	Ygg_Context blocking_context;
 } Ygg_Coordinator;
 
 Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
@@ -75,6 +92,10 @@ Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
 		.fiber_freelist_length = YGG_MAXIMUM_FIBERS,
 				
 		.worker_thread_count = parameters.thread_count,
+		.blocking_context = (Ygg_Context) {
+			.coordinator = coordinator,
+			.kind = Ygg_Context_Kind_Blocking,
+		},
 	};
 	
 	ygg_future_pool_init(&coordinator->future_pool, YGG_MAXIMUM_FIBERS);
@@ -105,9 +126,25 @@ void ygg_coordinator_destroy(Ygg_Coordinator* coordinator) {
 	free(coordinator);
 }
 
+Ygg_Context* ygg_blocking_context_new(Ygg_Coordinator* coordinator) {
+	Ygg_Context* blocking_context = malloc(sizeof(Ygg_Context));
+	*blocking_context = (Ygg_Context) {
+		.kind = Ygg_Context_Kind_Blocking,
+		.coordinator = coordinator,
+		.counter = 0,
+	};
+	ygg_semaphore_init(&blocking_context->semaphore);
+	return blocking_context;
+}
+void ygg_blocking_context_destroy(Ygg_Context* blocking_context) {
+	ygg_assert(blocking_context->kind == Ygg_Context_Kind_Blocking, "");
+}
+
 ygg_internal void ygg_coordinator_push_fiber(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle handle, Ygg_Priority priority) {
+	ygg_semaphore_lock(&coordinator->semaphore);
 	ygg_fiber_queue_push(coordinator->fiber_queues + priority, handle);
-	ygg_semaphore_signal(&coordinator->semaphore);
+	ygg_semaphore_broadcast(&coordinator->semaphore);
+	ygg_semaphore_unlock(&coordinator->semaphore);
 }
 ygg_internal bool ygg_coordinator_pop_fiber(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle* handle) {
 	for (int queue_index = YGG_PRIORITY_COUNT - 1; queue_index > 0; --queue_index) {
@@ -180,6 +217,12 @@ Ygg_Future* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fib
 		.fiber = fiber,
 		.state = Ygg_Fiber_Internal_State_Not_Started,
 		
+		.context = (Ygg_Context) {
+			.kind = Ygg_Context_Kind_Fiber,
+			.coordinator = coordinator,
+			.fiber_handle = handle,
+		},
+		
 		// Retained by coordinator until fiber has been executed
 		.rc = 1,
 		
@@ -195,40 +238,71 @@ Ygg_Future* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fib
 }
 
 // Current fiber functions
-void ygg_fiber_increment_counter(Ygg_Fiber_Ctx* ctx, unsigned int n) {
-	Ygg_Fiber_Internal* internal = ygg_coordinator_deref_fiber_handle(ctx->coordinator, ctx->fiber_handle);
-	atomic_fetch_add_explicit(&internal->counter, n, memory_order_acq_rel);
-}
-void ygg_fiber_decrement_counter(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle handle) {
-	Ygg_Fiber_Internal* internal = ygg_coordinator_deref_fiber_handle(coordinator, handle);
-	unsigned int previous = atomic_fetch_sub_explicit(&internal->counter, 1, memory_order_acq_rel);
-	ygg_assert(previous > 0, "Don't underflow");
-	
-	if (previous == 1) {
-		ygg_worker_thread_push_delayed_fiber(internal->owner_thread, handle);
-		ygg_semaphore_signal(&coordinator->semaphore);
+void ygg_increment_counter(Ygg_Context* ctx, unsigned int n) {
+	switch (ctx->kind) {
+		case Ygg_Context_Kind_Fiber: {
+			Ygg_Fiber_Internal* internal = ygg_coordinator_deref_fiber_handle(ctx->coordinator, ctx->fiber_handle);
+			atomic_fetch_add_explicit(&internal->counter, n, memory_order_acq_rel);
+		} break;
+			
+		case Ygg_Context_Kind_Blocking: {
+			atomic_fetch_add_explicit(&ctx->counter, 1, memory_order_acq_rel);
+		} break;
 	}
 }
-void ygg_fiber_wait_for_counter(Ygg_Fiber_Ctx* ctx) {
-	Ygg_Fiber_Internal* fiber_internal = ygg_coordinator_deref_fiber_handle(ctx->coordinator, ctx->fiber_handle);
-	
-	ygg_spinlock_lock(&fiber_internal->spinlock);
-	unsigned int counter = fiber_internal->counter;
-	ygg_spinlock_unlock(&fiber_internal->spinlock);
-
-	if (counter > 0) {
-		// Suspend fiber and return control back to the caller
-		ygg_spinlock_lock(&fiber_internal->spinlock);
-		fiber_internal->state = Ygg_Fiber_Internal_State_Suspended;
-		ygg_spinlock_unlock(&fiber_internal->spinlock);
-				
-		ygg_cpu_state_store(fiber_internal->resume_state);
-		if (fiber_internal->state == Ygg_Fiber_Internal_State_Suspended) {
-			ygg_cpu_state_restore(fiber_internal->suspend_state);
-		}
+void ygg_fiber_decrement_counter(Ygg_Context* ctx, unsigned int n) {
+	switch (ctx->kind) {
+		case Ygg_Context_Kind_Fiber: {
+			Ygg_Fiber_Internal* internal = ygg_coordinator_deref_fiber_handle(ctx->coordinator, ctx->fiber_handle);
+			
+			ygg_spinlock_lock(&internal->spinlock);
+			unsigned int previous = atomic_fetch_sub_explicit(&internal->counter, 1, memory_order_acq_rel);
+			ygg_assert(previous > 0, "Don't underflow");
+			
+			if ((previous == 1) && (internal->state == Ygg_Fiber_Internal_State_Suspended)) {
+				ygg_semaphore_lock(&ctx->coordinator->semaphore);
+				ygg_worker_thread_push_delayed_fiber(internal->owner_thread, ctx->fiber_handle);
+				// TODO: Add a semaphore to each worker thread so we can just wake up the fiber's owner thread
+				ygg_semaphore_broadcast(&ctx->coordinator->semaphore);
+				ygg_semaphore_unlock(&ctx->coordinator->semaphore);
+			}
+			ygg_spinlock_unlock(&internal->spinlock);
+		} break;
+			
+		case Ygg_Context_Kind_Blocking: {
+			unsigned int prev = atomic_fetch_sub_explicit(&ctx->counter, 1, memory_order_acq_rel);
+			ygg_assert(prev > 0, "Don't underflow");
+		} break;
 	}
 }
-Ygg_Coordinator* ygg_fiber_coordinator(Ygg_Fiber_Ctx* ctx) {
+void ygg_wait_for_counter(Ygg_Context* ctx) {
+	switch (ctx->kind) {
+		case Ygg_Context_Kind_Fiber: {
+			Ygg_Fiber_Internal* fiber_internal = ygg_coordinator_deref_fiber_handle(ctx->coordinator, ctx->fiber_handle);
+			
+			ygg_spinlock_lock(&fiber_internal->spinlock);
+			if (fiber_internal->counter > 0) {
+				// Suspend fiber and return control back to the caller
+				fiber_internal->state = Ygg_Fiber_Internal_State_Suspended;
+				ygg_spinlock_unlock(&fiber_internal->spinlock);
+				ygg_cpu_state_store(fiber_internal->resume_state);
+				if (fiber_internal->state == Ygg_Fiber_Internal_State_Suspended) {
+					ygg_cpu_state_restore(fiber_internal->suspend_state);
+				}
+			} else {
+				ygg_spinlock_unlock(&fiber_internal->spinlock);
+			}
+		} break;
+			
+		case Ygg_Context_Kind_Blocking: {
+			// TODO: Use a semaphore for this
+			while (atomic_load_explicit(&ctx->counter, memory_order_acquire) > 0) {
+				usleep(100);
+			}
+		} break;
+	}
+}
+Ygg_Coordinator* ygg_fiber_coordinator(Ygg_Context* ctx) {
 	return ctx->coordinator;
 }
 
@@ -249,24 +323,24 @@ void ygg_future_release(Ygg_Future* future) {
 		ygg_spinlock_unlock(&coordinator->future_pool_spinlock);
 	}
 }
-void ygg_future_wait(Ygg_Future* future, Ygg_Fiber_Ctx* current_context) {
+void ygg_future_wait(Ygg_Future* future, Ygg_Context* current_context) {
 	ygg_spinlock_lock(&future->spinlock);
 	if (future->fulfilled) {
 		ygg_spinlock_unlock(&future->spinlock);
 		return;
 	} else {
-		ygg_fiber_increment_counter(current_context, 1);
-		future->waiting_fibers[future->waiting_fiber_count++] = current_context->fiber_handle;
+		ygg_increment_counter(current_context, 1);
+		future->waiting[future->waiting_count++] = current_context;
 		ygg_spinlock_unlock(&future->spinlock);
-		ygg_fiber_wait_for_counter(current_context);
+		ygg_wait_for_counter(current_context);
 	}
 }
 void ygg_future_fulfill(Ygg_Future* future) {
 	ygg_spinlock_lock(&future->spinlock);
 	ygg_assert(!future->fulfilled, "Future has already been fulfilled.");
 	future->fulfilled = true;
-	for (unsigned int i = 0; i < future->waiting_fiber_count; ++i) {
-		ygg_fiber_decrement_counter(future->coordinator, future->waiting_fibers[i]);
+	for (unsigned int i = 0; i < future->waiting_count; ++i) {
+		ygg_fiber_decrement_counter(future->waiting[i], 1);
 	}
 	ygg_spinlock_unlock(&future->spinlock);
 }

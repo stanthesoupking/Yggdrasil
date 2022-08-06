@@ -29,12 +29,19 @@ void ygg_semaphore_init(Ygg_Semaphore* semaphore) {
 	pthread_mutex_init(&semaphore->mutex, NULL);
 }
 
-void ygg_semaphore_signal(Ygg_Semaphore* semaphore) {
+ygg_inline void ygg_semaphore_signal(Ygg_Semaphore* semaphore) {
 	pthread_cond_signal(&semaphore->cond);
 }
-
-void ygg_semaphore_wait(Ygg_Semaphore* semaphore) {
-	pthread_mutex_lock(&semaphore->mutex);
+ygg_inline void ygg_semaphore_broadcast(Ygg_Semaphore* semaphore) {
+	pthread_cond_broadcast(&semaphore->cond);
+}
+ygg_inline void ygg_semaphore_wait(Ygg_Semaphore* semaphore) {
 	pthread_cond_wait(&semaphore->cond, &semaphore->mutex);
+}
+
+ygg_inline void ygg_semaphore_lock(Ygg_Semaphore* semaphore) {
+	pthread_mutex_lock(&semaphore->mutex);
+}
+ygg_inline void ygg_semaphore_unlock(Ygg_Semaphore* semaphore) {
 	pthread_mutex_unlock(&semaphore->mutex);
 }

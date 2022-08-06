@@ -14,8 +14,8 @@ typedef struct Ygg_Fiber_Handle {
 	unsigned int generation;
 } Ygg_Fiber_Handle;
 
-typedef struct Ygg_Fiber_Ctx Ygg_Fiber_Ctx;
-typedef void (*Ygg_Fiber_Func)(Ygg_Fiber_Ctx*);
+typedef struct Ygg_Context Ygg_Context;
+typedef void (*Ygg_Fiber_Func)(Ygg_Context*);
 
 // MARK: Coordinator
 
@@ -27,6 +27,9 @@ typedef struct Ygg_Coordinator_Parameters {
 
 Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters);
 void ygg_coordinator_destroy(Ygg_Coordinator* coordinator);
+
+Ygg_Context* ygg_blocking_context_new(Ygg_Coordinator* coordinator);
+void ygg_blocking_context_destroy(Ygg_Context* blocking_context);
 
 typedef struct Ygg_Fiber {
 	const char* label;
@@ -43,7 +46,7 @@ ygg_inline Ygg_Fiber ygg_fiber(const char* label, Ygg_Fiber_Func func) {
 typedef struct Ygg_Future Ygg_Future;
 Ygg_Future* ygg_future_retain(Ygg_Future* future);
 void ygg_future_release(Ygg_Future* future);
-void ygg_future_wait(Ygg_Future* future, Ygg_Fiber_Ctx* current_context);
+void ygg_future_wait(Ygg_Future* future, Ygg_Context* current_context);
 
 typedef enum Ygg_Priority {
 	Ygg_Priority_Low = 0,
@@ -55,6 +58,7 @@ typedef enum Ygg_Priority {
 Ygg_Future* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fiber, Ygg_Priority priority);
 
 // Current fiber functions
-void ygg_fiber_increment_counter(Ygg_Fiber_Ctx* ctx, unsigned int n);
-void ygg_fiber_wait_for_counter(Ygg_Fiber_Ctx* ctx);
-Ygg_Coordinator* ygg_fiber_coordinator(Ygg_Fiber_Ctx* ctx);
+void ygg_increment_counter(Ygg_Context* ctx, unsigned int n);
+void ygg_decrement_counter(Ygg_Context* ctx, unsigned int n);
+void ygg_wait_for_counter(Ygg_Context* ctx);
+Ygg_Coordinator* ygg_fiber_coordinator(Ygg_Context* ctx);
