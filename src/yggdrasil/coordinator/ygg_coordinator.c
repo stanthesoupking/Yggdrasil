@@ -332,10 +332,6 @@ void ygg_store_result(Ygg_Context* ctx, void* data, unsigned int data_length) {
 	memcpy(future->result, data, data_length);
 }
 
-Ygg_Coordinator* ygg_fiber_coordinator(Ygg_Context* ctx) {
-	return ctx->coordinator;
-}
-
 // Futures
 Ygg_Future* ygg_future_retain(Ygg_Future* future) {
 	unsigned int previous = atomic_fetch_add_explicit(&future->rc, 1, memory_order_acq_rel);

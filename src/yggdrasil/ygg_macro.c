@@ -1,4 +1,8 @@
 
+#define ygg_inline static inline
+#define ygg_internal static inline
+#define ygg_force_inline static inline __attribute__((always_inline))
+
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define ygg_assert(cond, ...) \
 if(!(cond)) { \
