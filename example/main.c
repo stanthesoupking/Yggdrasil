@@ -4,7 +4,7 @@
 
 #include "yggdrasil/yggdrasil.h"
 
-void _fiber_encode_buffer(Ygg_Context* ctx) {
+void _fiber_encode_buffer(Ygg_Context* ctx, void* args) {
 	printf("_fiber_encode_buffer: start\n");
 	
 	sleep(1);
@@ -12,11 +12,11 @@ void _fiber_encode_buffer(Ygg_Context* ctx) {
 	printf("_fiber_encode_buffer: end\n");
 }
 
-void _fiber_visibility_check(Ygg_Context* ctx) {
+void _fiber_visibility_check(Ygg_Context* ctx, void* args) {
 	printf("_fiber_visibility_check: start\n");
 	
 	// Encode command buffer
-	Ygg_Future* encode_future = ygg_coordinator_dispatch(ygg_fiber_coordinator(ctx), ygg_fiber("encode_visibility", _fiber_encode_buffer), Ygg_Priority_Normal);
+	Ygg_Future* encode_future = ygg_coordinator_dispatch(ygg_fiber_coordinator(ctx), ygg_fiber("encode_visibility", _fiber_encode_buffer), Ygg_Priority_Normal, NULL, 0);
 	ygg_future_wait(encode_future, ctx);
 	ygg_future_release(encode_future);
 	
@@ -33,7 +33,7 @@ int main(int argc, const char * argv[]) {
 	Ygg_Context* context = ygg_blocking_context_new(coordinator);
 			
 	for (int i = 0; i < 256; ++i) {
-		Ygg_Future* visibility_checking_result = ygg_coordinator_dispatch(coordinator, ygg_fiber("visibility_check", _fiber_visibility_check), Ygg_Priority_Normal);
+		Ygg_Future* visibility_checking_result = ygg_coordinator_dispatch(coordinator, ygg_fiber("visibility_check", _fiber_visibility_check), Ygg_Priority_Normal, NULL, 0);
 		ygg_future_wait(visibility_checking_result, context);
 		ygg_future_release(visibility_checking_result);
 		printf("Kicking of next visibility test...\n");

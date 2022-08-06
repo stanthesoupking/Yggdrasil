@@ -35,7 +35,7 @@
 						  : "x0", "lr" \
 						  )\
 		
-		#define ygg_fiber_boot(stack_ptr, func, data) \
+		#define ygg_fiber_boot(stack_ptr, func, context, arguments) \
 			ygg_cpu_clobber_all_registers();\
 			asm volatile(\
 				/* Set sp and push current sp to the new stack for restoring when fiber ends. */\
@@ -45,12 +45,13 @@
 				"str x1, [sp]\n"\
 				/* Call func */\
 				"mov x0, %2\n"\
+				"mov x1, %3\n"\
 				"blr %1\n"\
 				/* Restore original sp */\
 				"ldr x1, [sp]\n"\
 				"mov sp, x1\n"\
 				:\
-				: "r"(stack_ptr), "r"(func), "r"(data) \
+				: "r"(stack_ptr), "r"(func), "r"(context), "r"(arguments) \
 				: "x0", "x1" \
 			)
 	#else

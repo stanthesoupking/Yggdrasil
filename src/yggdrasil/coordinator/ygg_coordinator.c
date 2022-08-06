@@ -1,6 +1,7 @@
 
 #define YGG_FIBER_STACK_SIZE 128 * 1024
 #define YGG_MAXIMUM_FIBERS 1024
+#define YGG_MAXIMUM_ARGUMENTS_LENGTH 64
 #define YGG_QUEUE_SIZE 1024
 
 typedef enum Ygg_Context_Kind {
@@ -45,6 +46,8 @@ typedef struct Ygg_Fiber_Internal {
 	unsigned int generation;
 	Ygg_Fiber_Internal_State state;
 	Ygg_Fiber fiber;
+	
+	unsigned char arguments[YGG_MAXIMUM_ARGUMENTS_LENGTH];
 	
 	Ygg_Context context;
 		
@@ -184,7 +187,9 @@ void ygg_coordinator_fiber_release(Ygg_Coordinator* coordinator, Ygg_Fiber_Handl
 	}
 }
 
-Ygg_Future* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fiber, Ygg_Priority priority) {
+Ygg_Future* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fiber, Ygg_Priority priority, void* args, unsigned int args_length) {
+	ygg_assert(args_length < YGG_MAXIMUM_ARGUMENTS_LENGTH, "Maximum arguments length of %d bytes exceeded.", YGG_MAXIMUM_ARGUMENTS_LENGTH);
+	
 	unsigned int fiber_index;
 	ygg_spinlock_lock(&coordinator->fiber_freelist_spinlock);
 	ygg_assert(coordinator->fiber_freelist_length > 0, "Maximum fibers exceeded");
@@ -229,6 +234,10 @@ Ygg_Future* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fib
 		// TODO: Pool these or something, don't use free/malloc
 		.stack = calloc(YGG_FIBER_STACK_SIZE, 1),
 	};
+	
+	if (args != NULL) {
+		memcpy(internal->arguments, args, args_length);
+	}
 	
 	ygg_coordinator_push_fiber(coordinator, handle, priority);
 	
