@@ -195,8 +195,10 @@ void ygg_coordinator_fiber_release(Ygg_Coordinator* coordinator, Ygg_Fiber_Handl
 	}
 }
 
-Ygg_Future* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fiber, Ygg_Priority priority, void* args, unsigned int args_length) {
+Ygg_Future* ygg_dispatch(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priority priority, void* args, unsigned int args_length) {
 	ygg_assert(args_length < YGG_MAXIMUM_ARGUMENTS_LENGTH, "Maximum arguments length of %d bytes exceeded.", YGG_MAXIMUM_ARGUMENTS_LENGTH);
+	
+	Ygg_Coordinator* coordinator = context->coordinator;
 	
 	unsigned int fiber_index;
 	ygg_spinlock_lock(&coordinator->fiber_freelist_spinlock);
@@ -249,6 +251,12 @@ Ygg_Future* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fib
 	
 	ygg_coordinator_push_fiber(coordinator, handle, priority);
 	
+	return future;
+}
+
+Ygg_Future* ygg_dispatch_sync(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priority priority, void* args, unsigned int args_length) {
+	Ygg_Future* future = ygg_dispatch(context, fiber, priority, args, args_length);
+	ygg_await(context, future);
 	return future;
 }
 
@@ -355,7 +363,8 @@ void ygg_future_release(Ygg_Future* future) {
 		ygg_spinlock_unlock(&coordinator->future_pool_spinlock);
 	}
 }
-void ygg_future_wait(Ygg_Future* future, Ygg_Context* context) {
+
+void ygg_await(Ygg_Context* context, Ygg_Future* future) {
 	ygg_spinlock_lock(&future->spinlock);
 	if (future->fulfilled) {
 		ygg_spinlock_unlock(&future->spinlock);
@@ -383,8 +392,9 @@ void ygg_future_wait(Ygg_Future* future, Ygg_Context* context) {
 		ygg_wait_for_counter(context);
 	}
 }
-const void* ygg_future_unwrap(Ygg_Future* future, Ygg_Context* context) {
-	ygg_future_wait(future, context);
+
+const void* ygg_unwrap(Ygg_Context* context, Ygg_Future* future) {
+	ygg_await(context, future);
 	return future->result;
 }
 void ygg_future_fulfill(Ygg_Future* future) {

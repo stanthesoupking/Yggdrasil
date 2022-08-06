@@ -46,10 +46,6 @@ ygg_inline Ygg_Fiber ygg_fiber(const char* label, Ygg_Fiber_Func func) {
 typedef struct Ygg_Future Ygg_Future;
 Ygg_Future* ygg_future_retain(Ygg_Future* future);
 void ygg_future_release(Ygg_Future* future);
-void ygg_future_wait(Ygg_Future* future, Ygg_Context* context);
-
-// NOTE: Result is only valid while future is retained.
-const void* ygg_future_unwrap(Ygg_Future* future, Ygg_Context* context);
 
 typedef enum Ygg_Priority {
 	Ygg_Priority_Low = 0,
@@ -58,13 +54,23 @@ typedef enum Ygg_Priority {
 } Ygg_Priority;
 #define YGG_PRIORITY_COUNT 3
 
-Ygg_Future* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fiber, Ygg_Priority priority, void* args, unsigned int args_length);
+Ygg_Future* ygg_dispatch(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priority priority, void* args, unsigned int args_length);
+Ygg_Future* ygg_dispatch_sync(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priority priority, void* args, unsigned int args_length);
 
-// Current fiber functions
+// ---- Current fiber functions ----
+
+// -- Futures
+// NOTE: Result is only valid while future is retained.
+const void* ygg_unwrap(Ygg_Context* context, Ygg_Future* future);
+void ygg_await(Ygg_Context* context, Ygg_Future* future);
+
+// -- Counters
 void ygg_increment_counter(Ygg_Context* ctx, unsigned int n);
 void ygg_decrement_counter(Ygg_Context* ctx, unsigned int n);
 void ygg_wait_for_counter(Ygg_Context* ctx);
 
+// -- Result
 void ygg_store_result(Ygg_Context* ctx, void* data, unsigned int data_length);
 
+// -- Getters
 Ygg_Coordinator* ygg_fiber_coordinator(Ygg_Context* ctx);
