@@ -8,13 +8,18 @@ typedef struct Ygg_Fiber_Ctx {
 	Ygg_Fiber_Handle fiber_handle;
 } Ygg_Fiber_Ctx;
 
-typedef struct Ygg_Lazy_Result {
+typedef struct Ygg_Future {
 	Ygg_Coordinator* coordinator;
+	Ygg_Spinlock spinlock;
 	Ygg_Fiber_Handle fiber_handle;
 	atomic_uint rc;
+	bool fulfilled;
 	
-	// some other data here for result
-} Ygg_Lazy_Result;
+	// TODO: Linked list with pool to support arbitrary array length
+	Ygg_Fiber_Handle waiting_fibers[16];
+	unsigned int waiting_fiber_count;
+} Ygg_Future;
+ygg_pool(Ygg_Future, Ygg_Future_Pool, ygg_future_pool);
 
 typedef enum Ygg_Fiber_Internal_State {
 	Ygg_Fiber_Internal_State_Not_Started,
@@ -31,7 +36,7 @@ typedef struct Ygg_Fiber_Internal {
 	// Valid after the fiber has been started
 	Ygg_Worker_Thread* owner_thread;
 	
-	Ygg_Lazy_Result lazy_result;
+	Ygg_Future* future; // owned(retained)
 	Ygg_Spinlock spinlock;
 	
 	atomic_uint rc;
@@ -42,15 +47,14 @@ typedef struct Ygg_Fiber_Internal {
 	
 	// TODO: Allocate elsewhere to decrease struct size
 	void* stack;
-		
-	// TODO: Linked list with pool to support arbitrary array length
-	Ygg_Fiber_Handle successors[16];
-	unsigned int successor_count;
 } Ygg_Fiber_Internal;
 
 typedef struct Ygg_Coordinator {
 	Ygg_Fiber_Internal fiber_storage[YGG_MAXIMUM_FIBERS];
 	unsigned int fiber_count;
+	
+	Ygg_Spinlock future_pool_spinlock;
+	Ygg_Future_Pool future_pool;
 	
 	unsigned int fiber_freelist[YGG_MAXIMUM_FIBERS];
 	unsigned int fiber_freelist_length;
@@ -72,6 +76,8 @@ Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
 				
 		.worker_thread_count = parameters.thread_count,
 	};
+	
+	ygg_future_pool_init(&coordinator->future_pool, YGG_MAXIMUM_FIBERS);
 	
 	for (unsigned int fiber_index = 0; fiber_index < YGG_MAXIMUM_FIBERS; ++fiber_index) {
 		coordinator->fiber_freelist[YGG_MAXIMUM_FIBERS - fiber_index - 1] = fiber_index;
@@ -143,7 +149,7 @@ void ygg_coordinator_fiber_release(Ygg_Coordinator* coordinator, Ygg_Fiber_Handl
 	}
 }
 
-Ygg_Lazy_Result* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fiber, Ygg_Priority priority) {
+Ygg_Future* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fiber, Ygg_Priority priority) {
 	unsigned int fiber_index;
 	ygg_spinlock_lock(&coordinator->fiber_freelist_spinlock);
 	ygg_assert(coordinator->fiber_freelist_length > 0, "Maximum fibers exceeded");
@@ -158,10 +164,15 @@ Ygg_Lazy_Result* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fibe
 		.generation = fiber_generation,
 	};
 	
-	Ygg_Lazy_Result lazy_result = {
+	ygg_spinlock_lock(&coordinator->future_pool_spinlock);
+	Ygg_Future* future = ygg_future_pool_acquire(&coordinator->future_pool);
+	ygg_spinlock_unlock(&coordinator->future_pool_spinlock);
+	*future = (Ygg_Future) {
 		.coordinator = coordinator,
 		.fiber_handle = handle,
-		.rc = 2, // Retained by fiber until fiber has been executed, retained by dispatch caller
+		
+		// Retained by fiber until fiber has been executed, retained by dispatch caller
+		.rc = 2,
 	};
 	
 	*internal = (Ygg_Fiber_Internal) {
@@ -169,10 +180,10 @@ Ygg_Lazy_Result* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fibe
 		.fiber = fiber,
 		.state = Ygg_Fiber_Internal_State_Not_Started,
 		
-		// Retained by coordinator until fiber has been executed, retained by lazy result
-		.rc = 2,
+		// Retained by coordinator until fiber has been executed
+		.rc = 1,
 		
-		.lazy_result = lazy_result,
+		.future = future,
 		
 		// TODO: Pool these or something, don't use free/malloc
 		.stack = calloc(YGG_FIBER_STACK_SIZE, 1),
@@ -180,41 +191,7 @@ Ygg_Lazy_Result* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fibe
 	
 	ygg_coordinator_push_fiber(coordinator, handle, priority);
 	
-	return &internal->lazy_result;
-}
-
-Ygg_Lazy_Result* ygg_lazy_result_retain(Ygg_Lazy_Result* result) {
-	unsigned int previous = atomic_fetch_add_explicit(&result->rc, 1, memory_order_acq_rel);
-	ygg_assert(previous > 0, "Lazy result was already released");
-	return result;
-}
-void ygg_lazy_result_release(Ygg_Lazy_Result* result) {
-	unsigned int previous = atomic_fetch_sub_explicit(&result->rc, 1, memory_order_acq_rel);
-	ygg_assert(previous > 0, "Lazy result over released");
-	
-	if (previous == 1) {
-		// Lazy result has been fully released, we can now release the fiber.
-//		Ygg_Fiber_Internal* fiber_internal = ygg_coordinator_deref_fiber_handle(result->coordinator, result->fiber_handle);
-//		ygg_spinlock_lock(&fiber_internal->spinlock);
-		ygg_coordinator_fiber_release(result->coordinator, result->fiber_handle);
-//		ygg_spinlock_unlock(&fiber_internal->spinlock);
-	}
-}
-void ygg_lazy_result_unwrap(Ygg_Fiber_Ctx* ctx, Ygg_Lazy_Result* result) {
-	Ygg_Fiber_Internal* result_fiber = ygg_coordinator_deref_fiber_handle(ctx->coordinator, result->fiber_handle);
-	
-	ygg_spinlock_lock(&result_fiber->spinlock);
-	Ygg_Fiber_Internal_State state = result_fiber->state;
-	if (state != Ygg_Fiber_Internal_State_Complete) {
-		// Append current fiber as a dependant on result fiber
-		result_fiber->successors[result_fiber->successor_count++] = ctx->fiber_handle;
-		ygg_fiber_increment_counter(ctx, 1);
-	}
-	ygg_spinlock_unlock(&result_fiber->spinlock);
-	
-	if (state != Ygg_Fiber_Internal_State_Complete) {
-		ygg_fiber_wait_for_counter(ctx);
-	}
+	return future;
 }
 
 // Current fiber functions
@@ -253,4 +230,43 @@ void ygg_fiber_wait_for_counter(Ygg_Fiber_Ctx* ctx) {
 }
 Ygg_Coordinator* ygg_fiber_coordinator(Ygg_Fiber_Ctx* ctx) {
 	return ctx->coordinator;
+}
+
+// Futures
+Ygg_Future* ygg_future_retain(Ygg_Future* future) {
+	unsigned int previous = atomic_fetch_add_explicit(&future->rc, 1, memory_order_acq_rel);
+	ygg_assert(previous > 0, "Future was already released");
+	return future;
+}
+void ygg_future_release(Ygg_Future* future) {
+	unsigned int previous = atomic_fetch_sub_explicit(&future->rc, 1, memory_order_acq_rel);
+	ygg_assert(previous > 0, "Future over released");
+	
+	if (previous == 1) {
+		Ygg_Coordinator* coordinator = future->coordinator;
+		ygg_spinlock_lock(&coordinator->future_pool_spinlock);
+		ygg_future_pool_release(&coordinator->future_pool, future);
+		ygg_spinlock_unlock(&coordinator->future_pool_spinlock);
+	}
+}
+void ygg_future_wait(Ygg_Future* future, Ygg_Fiber_Ctx* current_context) {
+	ygg_spinlock_lock(&future->spinlock);
+	if (future->fulfilled) {
+		ygg_spinlock_unlock(&future->spinlock);
+		return;
+	} else {
+		ygg_fiber_increment_counter(current_context, 1);
+		future->waiting_fibers[future->waiting_fiber_count++] = current_context->fiber_handle;
+		ygg_spinlock_unlock(&future->spinlock);
+		ygg_fiber_wait_for_counter(current_context);
+	}
+}
+void ygg_future_fulfill(Ygg_Future* future) {
+	ygg_spinlock_lock(&future->spinlock);
+	ygg_assert(!future->fulfilled, "Future has already been fulfilled.");
+	future->fulfilled = true;
+	for (unsigned int i = 0; i < future->waiting_fiber_count; ++i) {
+		ygg_fiber_decrement_counter(future->coordinator, future->waiting_fibers[i]);
+	}
+	ygg_spinlock_unlock(&future->spinlock);
 }

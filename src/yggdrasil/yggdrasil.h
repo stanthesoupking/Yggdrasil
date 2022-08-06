@@ -40,10 +40,10 @@ ygg_inline Ygg_Fiber ygg_fiber(const char* label, Ygg_Fiber_Func func) {
 	};
 }
 
-typedef struct Ygg_Lazy_Result Ygg_Lazy_Result;
-Ygg_Lazy_Result* ygg_lazy_result_retain(Ygg_Lazy_Result* result);
-void ygg_lazy_result_release(Ygg_Lazy_Result* result);
-void ygg_lazy_result_unwrap(Ygg_Fiber_Ctx* ctx, Ygg_Lazy_Result* result);
+typedef struct Ygg_Future Ygg_Future;
+Ygg_Future* ygg_future_retain(Ygg_Future* future);
+void ygg_future_release(Ygg_Future* future);
+void ygg_future_wait(Ygg_Future* future, Ygg_Fiber_Ctx* current_context);
 
 typedef enum Ygg_Priority {
 	Ygg_Priority_Low = 0,
@@ -52,7 +52,7 @@ typedef enum Ygg_Priority {
 } Ygg_Priority;
 #define YGG_PRIORITY_COUNT 3
 
-Ygg_Lazy_Result* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fiber, Ygg_Priority priority);
+Ygg_Future* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fiber, Ygg_Priority priority);
 
 // Current fiber functions
 void ygg_fiber_increment_counter(Ygg_Fiber_Ctx* ctx, unsigned int n);

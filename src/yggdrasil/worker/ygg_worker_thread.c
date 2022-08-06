@@ -102,13 +102,8 @@ void* _ygg_thread(void* data) {
 				ygg_spinlock_lock(&fiber_internal->spinlock);
 				fiber_internal->state = Ygg_Fiber_Internal_State_Complete;
 				ygg_spinlock_unlock(&fiber_internal->spinlock);
-				ygg_lazy_result_release(&fiber_internal->lazy_result);
-				
-				// Decrement counters of any waiting fibers
-				for (unsigned int successor_index = 0; successor_index < fiber_internal->successor_count; ++successor_index) {
-					ygg_fiber_decrement_counter(coordinator, fiber_internal->successors[successor_index]);
-				}
-				
+				ygg_future_fulfill(fiber_internal->future);
+				ygg_future_release(fiber_internal->future);
 				ygg_coordinator_fiber_release(coordinator, fiber_handle);
 			}
 		} else {
