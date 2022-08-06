@@ -75,7 +75,6 @@ typedef struct Ygg_Coordinator {
 	unsigned int fiber_freelist_length;
 	Ygg_Spinlock fiber_freelist_spinlock;
 		
-	Ygg_Semaphore semaphore;
 	Ygg_Fiber_Queue fiber_queues[YGG_PRIORITY_COUNT];
 	
 	Ygg_Worker_Thread** worker_threads;
@@ -103,9 +102,7 @@ Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
 	for (unsigned int fiber_index = 0; fiber_index < YGG_MAXIMUM_FIBERS; ++fiber_index) {
 		coordinator->fiber_freelist[YGG_MAXIMUM_FIBERS - fiber_index - 1] = fiber_index;
 	}
-	
-	ygg_semaphore_init(&coordinator->semaphore);
-	
+		
 	for (unsigned int queue_index = 0; queue_index < YGG_PRIORITY_COUNT; ++queue_index) {
 		ygg_fiber_queue_init(coordinator->fiber_queues + queue_index, YGG_QUEUE_SIZE);
 	}
@@ -141,10 +138,11 @@ void ygg_blocking_context_destroy(Ygg_Context* blocking_context) {
 }
 
 ygg_internal void ygg_coordinator_push_fiber(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle handle, Ygg_Priority priority) {
-	ygg_semaphore_lock(&coordinator->semaphore);
 	ygg_fiber_queue_push(coordinator->fiber_queues + priority, handle);
-	ygg_semaphore_broadcast(&coordinator->semaphore);
-	ygg_semaphore_unlock(&coordinator->semaphore);
+	for (unsigned int worker_index = 0; worker_index < coordinator->worker_thread_count; ++worker_index) {
+		Ygg_Semaphore* worker_semaphore = ygg_worker_thread_semaphore(coordinator->worker_threads[worker_index]);
+		ygg_semaphore_signal(worker_semaphore);
+	}
 }
 ygg_internal bool ygg_coordinator_pop_fiber(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle* handle) {
 	for (int queue_index = YGG_PRIORITY_COUNT - 1; queue_index > 0; --queue_index) {
@@ -260,11 +258,8 @@ void ygg_fiber_decrement_counter(Ygg_Context* ctx, unsigned int n) {
 			ygg_assert(previous > 0, "Don't underflow");
 			
 			if ((previous == 1) && (internal->state == Ygg_Fiber_Internal_State_Suspended)) {
-				ygg_semaphore_lock(&ctx->coordinator->semaphore);
 				ygg_worker_thread_push_delayed_fiber(internal->owner_thread, ctx->fiber_handle);
-				// TODO: Add a semaphore to each worker thread so we can just wake up the fiber's owner thread
-				ygg_semaphore_broadcast(&ctx->coordinator->semaphore);
-				ygg_semaphore_unlock(&ctx->coordinator->semaphore);
+				ygg_semaphore_signal(ygg_worker_thread_semaphore(internal->owner_thread));
 			}
 			ygg_spinlock_unlock(&internal->spinlock);
 		} break;
@@ -272,6 +267,9 @@ void ygg_fiber_decrement_counter(Ygg_Context* ctx, unsigned int n) {
 		case Ygg_Context_Kind_Blocking: {
 			unsigned int prev = atomic_fetch_sub_explicit(&ctx->counter, 1, memory_order_acq_rel);
 			ygg_assert(prev > 0, "Don't underflow");
+			if (prev == 1) {
+				ygg_semaphore_signal(&ctx->semaphore);
+			}
 		} break;
 	}
 }
@@ -295,10 +293,7 @@ void ygg_wait_for_counter(Ygg_Context* ctx) {
 		} break;
 			
 		case Ygg_Context_Kind_Blocking: {
-			// TODO: Use a semaphore for this
-			while (atomic_load_explicit(&ctx->counter, memory_order_acquire) > 0) {
-				usleep(100);
-			}
+			ygg_semaphore_wait(&ctx->semaphore);
 		} break;
 	}
 }

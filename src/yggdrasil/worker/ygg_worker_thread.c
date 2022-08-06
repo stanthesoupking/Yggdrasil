@@ -3,7 +3,8 @@ typedef struct Ygg_Worker_Thread {
 	unsigned int thread_index;
 	pthread_t thread;
 	Ygg_Coordinator* coordinator;
-		
+	Ygg_Semaphore semaphore;
+	
 	Ygg_Fiber_Queue delayed_queue;
 } Ygg_Worker_Thread;
 
@@ -18,6 +19,7 @@ Ygg_Worker_Thread* ygg_worker_thread_new(Ygg_Coordinator* coordinator, unsigned 
 		.coordinator = coordinator,
 		.thread_index = thread_index,
 	};
+	ygg_semaphore_init(&worker_thread->semaphore);
 	ygg_fiber_queue_init(&worker_thread->delayed_queue, YGG_QUEUE_SIZE);
 	return worker_thread;
 }
@@ -66,12 +68,10 @@ void* _ygg_thread(void* data) {
 	while (alive) {
 		// Get next fiber
 		Ygg_Fiber_Handle fiber_handle;
-		ygg_semaphore_lock(&coordinator->semaphore);
 		while(!ygg_worker_thread_next_fiber(thread, &fiber_handle)) {
 			// Wait for coordinator semaphore to update and tell us something has changed
-			ygg_semaphore_wait(&coordinator->semaphore);
+			ygg_semaphore_wait(&thread->semaphore);
 		}
-		ygg_semaphore_unlock(&coordinator->semaphore);
 
 		Ygg_Fiber_Internal* fiber_internal = ygg_coordinator_deref_fiber_handle(coordinator, fiber_handle);
 		
@@ -122,4 +122,9 @@ void ygg_worker_thread_push_delayed_fiber(Ygg_Worker_Thread* thread, Ygg_Fiber_H
 	ygg_assert(fiber_internal->state == Ygg_Fiber_Internal_State_Suspended, "Fiber should be suspended");
 	ygg_assert(fiber_internal->counter == 0, "Counter should be zero if the fiber is ready to resume");
 	ygg_fiber_queue_push(&thread->delayed_queue, handle);
+	ygg_semaphore_signal(&thread->semaphore);
+}
+
+Ygg_Semaphore* ygg_worker_thread_semaphore(Ygg_Worker_Thread* thread) {
+	return &thread->semaphore;
 }
