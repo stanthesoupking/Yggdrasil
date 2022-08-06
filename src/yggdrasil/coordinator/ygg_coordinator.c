@@ -156,7 +156,7 @@ ygg_internal void ygg_coordinator_push_fiber(Ygg_Coordinator* coordinator, Ygg_F
 	}
 }
 ygg_internal bool ygg_coordinator_pop_fiber(Ygg_Coordinator* coordinator, Ygg_Fiber_Handle* handle) {
-	for (int queue_index = YGG_PRIORITY_COUNT - 1; queue_index > 0; --queue_index) {
+	for (int queue_index = YGG_PRIORITY_COUNT - 1; queue_index >= 0; --queue_index) {
 		if (ygg_fiber_queue_pop(coordinator->fiber_queues + queue_index, handle)) {
 			return true;
 		}
