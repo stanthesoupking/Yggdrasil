@@ -10,6 +10,9 @@ void _fiber_encode_buffer(Ygg_Context* ctx, void* args) {
 	sleep(1);
 	
 	printf("_fiber_encode_buffer: end\n");
+	
+	int result = 1234;
+	ygg_store_result(ctx, &result, sizeof(result));
 }
 
 void _fiber_visibility_check(Ygg_Context* ctx, void* args) {
@@ -17,7 +20,8 @@ void _fiber_visibility_check(Ygg_Context* ctx, void* args) {
 	
 	// Encode command buffer
 	Ygg_Future* encode_future = ygg_coordinator_dispatch(ygg_fiber_coordinator(ctx), ygg_fiber("encode_visibility", _fiber_encode_buffer), Ygg_Priority_Normal, NULL, 0);
-	ygg_future_wait(encode_future, ctx);
+	const int* result = ygg_future_unwrap(encode_future, ctx);
+	printf("encode returned %d\n", *result);
 	ygg_future_release(encode_future);
 	
 	printf("_fiber_visibility_check: end\n");
@@ -43,9 +47,6 @@ int main(int argc, const char * argv[]) {
 	
 	ygg_blocking_context_destroy(context);
 	ygg_coordinator_destroy(coordinator);
-		
-	// Lazy results (or a 'promise') (await on result to unwrap?)
-	// terminology: suspend and resume?
 	
 	return 0;
 }

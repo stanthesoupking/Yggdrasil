@@ -29,6 +29,8 @@ typedef struct Ygg_Future {
 	atomic_uint rc;
 	bool fulfilled;
 	
+	void* result;
+	
 	// TODO: Linked list with pool to support arbitrary array length
 	Ygg_Context* waiting[16];
 	unsigned int waiting_count;
@@ -306,6 +308,16 @@ void ygg_wait_for_counter(Ygg_Context* ctx) {
 		} break;
 	}
 }
+
+void ygg_store_result(Ygg_Context* ctx, void* data, unsigned int data_length) {
+	ygg_assert(ctx->kind == Ygg_Context_Kind_Fiber, "Only fibers can store result values");
+	Ygg_Fiber_Internal* internal = ygg_coordinator_deref_fiber_handle(ctx->coordinator, ctx->fiber_handle);
+	Ygg_Future* future = internal->future;
+	ygg_assert(future->result == NULL, "Fiber has already stored a result");
+	future->result = malloc(data_length);
+	memcpy(future->result, data, data_length);
+}
+
 Ygg_Coordinator* ygg_fiber_coordinator(Ygg_Context* ctx) {
 	return ctx->coordinator;
 }
@@ -321,23 +333,31 @@ void ygg_future_release(Ygg_Future* future) {
 	ygg_assert(previous > 0, "Future over released");
 	
 	if (previous == 1) {
+		if (future->result != NULL) {
+			free(future->result);
+		}
+		
 		Ygg_Coordinator* coordinator = future->coordinator;
 		ygg_spinlock_lock(&coordinator->future_pool_spinlock);
 		ygg_future_pool_release(&coordinator->future_pool, future);
 		ygg_spinlock_unlock(&coordinator->future_pool_spinlock);
 	}
 }
-void ygg_future_wait(Ygg_Future* future, Ygg_Context* current_context) {
+void ygg_future_wait(Ygg_Future* future, Ygg_Context* context) {
 	ygg_spinlock_lock(&future->spinlock);
 	if (future->fulfilled) {
 		ygg_spinlock_unlock(&future->spinlock);
 		return;
 	} else {
-		ygg_increment_counter(current_context, 1);
-		future->waiting[future->waiting_count++] = current_context;
+		ygg_increment_counter(context, 1);
+		future->waiting[future->waiting_count++] = context;
 		ygg_spinlock_unlock(&future->spinlock);
-		ygg_wait_for_counter(current_context);
+		ygg_wait_for_counter(context);
 	}
+}
+const void* ygg_future_unwrap(Ygg_Future* future, Ygg_Context* context) {
+	ygg_future_wait(future, context);
+	return future->result;
 }
 void ygg_future_fulfill(Ygg_Future* future) {
 	ygg_spinlock_lock(&future->spinlock);

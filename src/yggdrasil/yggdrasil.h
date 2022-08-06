@@ -46,7 +46,10 @@ ygg_inline Ygg_Fiber ygg_fiber(const char* label, Ygg_Fiber_Func func) {
 typedef struct Ygg_Future Ygg_Future;
 Ygg_Future* ygg_future_retain(Ygg_Future* future);
 void ygg_future_release(Ygg_Future* future);
-void ygg_future_wait(Ygg_Future* future, Ygg_Context* current_context);
+void ygg_future_wait(Ygg_Future* future, Ygg_Context* context);
+
+// NOTE: Result is only valid while future is retained.
+const void* ygg_future_unwrap(Ygg_Future* future, Ygg_Context* context);
 
 typedef enum Ygg_Priority {
 	Ygg_Priority_Low = 0,
@@ -61,4 +64,7 @@ Ygg_Future* ygg_coordinator_dispatch(Ygg_Coordinator* coordinator, Ygg_Fiber fib
 void ygg_increment_counter(Ygg_Context* ctx, unsigned int n);
 void ygg_decrement_counter(Ygg_Context* ctx, unsigned int n);
 void ygg_wait_for_counter(Ygg_Context* ctx);
+
+void ygg_store_result(Ygg_Context* ctx, void* data, unsigned int data_length);
+
 Ygg_Coordinator* ygg_fiber_coordinator(Ygg_Context* ctx);
