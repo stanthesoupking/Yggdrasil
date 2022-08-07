@@ -35,7 +35,7 @@
 						  : "x0", "lr" \
 						  )\
 		
-		#define ygg_fiber_boot(stack_ptr, func, context, arguments) \
+		#define ygg_fiber_boot(stack_ptr, func, context, input, output) \
 			ygg_cpu_clobber_all_registers();\
 			asm volatile(\
 				/* Set sp and push current sp to the new stack for restoring when fiber ends. */\
@@ -46,13 +46,14 @@
 				/* Call func */\
 				"mov x0, %2\n"\
 				"mov x1, %3\n"\
+				"mov x2, %4\n"\
 				"blr %1\n"\
 				/* Restore original sp */\
 				"ldr x1, [sp]\n"\
 				"mov sp, x1\n"\
 				:\
-				: "r"(stack_ptr), "r"(func), "r"(context), "r"(arguments) \
-				: "x0", "x1" \
+				: "r"(stack_ptr), "r"(func), "r"(context), "r"(input), "r"(output) \
+				: "x0", "x1", "x2" \
 			)
 	#else
 		#error "unsupported architecture"

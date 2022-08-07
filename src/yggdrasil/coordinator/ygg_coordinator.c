@@ -1,7 +1,7 @@
 
 #define YGG_FIBER_STACK_SIZE 128 * 1024
 #define YGG_MAXIMUM_FIBERS 1024
-#define YGG_MAXIMUM_ARGUMENTS_LENGTH 64
+#define YGG_MAXIMUM_INPUT_LENGTH 64
 #define YGG_QUEUE_SIZE 1024
 
 typedef enum Ygg_Context_Kind {
@@ -35,9 +35,7 @@ typedef struct Ygg_Future {
 	Ygg_Fiber_Handle fiber_handle;
 	atomic_uint rc;
 	bool fulfilled;
-	
-	void* result;
-	
+		
 	Ygg_Future_Waiting_Entry* waiting;
 } Ygg_Future;
 ygg_pool(Ygg_Future, Ygg_Future_Pool, ygg_future_pool);
@@ -54,7 +52,8 @@ typedef struct Ygg_Fiber_Internal {
 	Ygg_Fiber_Internal_State state;
 	Ygg_Fiber fiber;
 	
-	unsigned char arguments[YGG_MAXIMUM_ARGUMENTS_LENGTH];
+	unsigned char input[YGG_MAXIMUM_INPUT_LENGTH];
+	void* output;
 	
 	Ygg_Context context;
 		
@@ -195,8 +194,8 @@ void ygg_coordinator_fiber_release(Ygg_Coordinator* coordinator, Ygg_Fiber_Handl
 	}
 }
 
-Ygg_Future* ygg_dispatch(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priority priority, void* args, unsigned int args_length) {
-	ygg_assert(args_length < YGG_MAXIMUM_ARGUMENTS_LENGTH, "Maximum arguments length of %d bytes exceeded.", YGG_MAXIMUM_ARGUMENTS_LENGTH);
+Ygg_Future* ygg_dispatch_generic(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priority priority, void* input, unsigned int input_length, void* output_ptr) {
+	ygg_assert(input_length < YGG_MAXIMUM_INPUT_LENGTH, "Maximum input length of %d bytes exceeded.", YGG_MAXIMUM_INPUT_LENGTH);
 	
 	Ygg_Coordinator* coordinator = context->coordinator;
 	
@@ -230,6 +229,8 @@ Ygg_Future* ygg_dispatch(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priority pri
 		.fiber = fiber,
 		.state = Ygg_Fiber_Internal_State_Not_Started,
 		
+		.output = output_ptr,
+		
 		.context = (Ygg_Context) {
 			.kind = Ygg_Context_Kind_Fiber,
 			.coordinator = coordinator,
@@ -245,8 +246,8 @@ Ygg_Future* ygg_dispatch(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priority pri
 		.stack = calloc(YGG_FIBER_STACK_SIZE, 1),
 	};
 	
-	if (args != NULL) {
-		memcpy(internal->arguments, args, args_length);
+	if (input != NULL) {
+		memcpy(internal->input, input, input_length);
 	}
 	
 	ygg_coordinator_push_fiber(coordinator, handle, priority);
@@ -254,10 +255,10 @@ Ygg_Future* ygg_dispatch(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priority pri
 	return future;
 }
 
-Ygg_Future* ygg_dispatch_sync(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priority priority, void* args, unsigned int args_length) {
-	Ygg_Future* future = ygg_dispatch(context, fiber, priority, args, args_length);
+void ygg_dispatch_generic_sync(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priority priority, void* input, unsigned int input_length, void* output_ptr) {
+	Ygg_Future* future = ygg_dispatch_generic(context, fiber, priority, input, input_length, output_ptr);
 	ygg_await(context, future);
-	return future;
+	ygg_future_release(future);
 }
 
 // Current fiber functions
@@ -323,15 +324,6 @@ void ygg_wait_for_counter(Ygg_Context* ctx) {
 	}
 }
 
-void ygg_store_result(Ygg_Context* ctx, void* data, unsigned int data_length) {
-	ygg_assert(ctx->kind == Ygg_Context_Kind_Fiber, "Only fibers can store result values");
-	Ygg_Fiber_Internal* internal = ygg_coordinator_deref_fiber_handle(ctx->coordinator, ctx->fiber_handle);
-	Ygg_Future* future = internal->future;
-	ygg_assert(future->result == NULL, "Fiber has already stored a result");
-	future->result = malloc(data_length);
-	memcpy(future->result, data, data_length);
-}
-
 // Futures
 Ygg_Future* ygg_future_retain(Ygg_Future* future) {
 	unsigned int previous = atomic_fetch_add_explicit(&future->rc, 1, memory_order_acq_rel);
@@ -343,10 +335,6 @@ void ygg_future_release(Ygg_Future* future) {
 	ygg_assert(previous > 0, "Future over released");
 	
 	if (previous == 1) {
-		if (future->result != NULL) {
-			free(future->result);
-		}
-		
 		Ygg_Coordinator* coordinator = future->coordinator;
 		ygg_spinlock_lock(&coordinator->future_pool_spinlock);
 		Ygg_Future_Waiting_Entry* entry = future->waiting;
@@ -389,10 +377,6 @@ void ygg_await(Ygg_Context* context, Ygg_Future* future) {
 	}
 }
 
-const void* ygg_unwrap(Ygg_Context* context, Ygg_Future* future) {
-	ygg_await(context, future);
-	return future->result;
-}
 void ygg_future_fulfill(Ygg_Future* future) {
 	ygg_spinlock_lock(&future->spinlock);
 	ygg_assert(!future->fulfilled, "Future has already been fulfilled.");
@@ -405,4 +389,19 @@ void ygg_future_fulfill(Ygg_Future* future) {
 	}
 	
 	ygg_spinlock_unlock(&future->spinlock);
+}
+
+
+// tmp
+typedef struct Ygg_Future_Generic {
+	
+} Ygg_Future_Generic;
+void ygg_future_generic_retain(Ygg_Future_Generic* generic) {
+	
+}
+void ygg_future_generic_release(Ygg_Future_Generic* generic) {
+	
+}
+const void* ygg_future_generic_unwrap(Ygg_Future_Generic* generic) {
+	return NULL;
 }

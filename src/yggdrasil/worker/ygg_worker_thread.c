@@ -90,8 +90,9 @@ void* _ygg_thread(void* data) {
 			if (fiber_internal->state == Ygg_Fiber_Internal_State_Running) {
 				void* sp = fiber_internal->stack + YGG_FIBER_STACK_SIZE;
 				void* ctx = &fiber_internal->context;
-				void* args = fiber_internal->arguments;
-				ygg_fiber_boot(sp, fiber_internal->fiber.func, ctx, args);
+				void* input = fiber_internal->input;
+				void* output = fiber_internal->output;
+				ygg_fiber_boot(sp, fiber_internal->fiber.func, ctx, input, output);
 								
 				//printf("Thread %d: Completed fiber '%s'.\n", thread->thread_index, fiber_internal->fiber.label);
 				ygg_spinlock_lock(&fiber_internal->spinlock);
