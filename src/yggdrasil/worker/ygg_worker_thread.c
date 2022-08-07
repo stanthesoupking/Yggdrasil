@@ -75,7 +75,7 @@ void* _ygg_thread(void* data) {
 
 		Ygg_Fiber_Internal* fiber_internal = ygg_coordinator_deref_fiber_handle(coordinator, fiber_handle);
 		
-		ygg_update_thread_label("Fiber (index: %d) '%s'", fiber_handle.index, fiber_internal->fiber.label);
+		ygg_update_thread_label("Fiber '%s'", fiber_internal->fiber.label);
 		if (fiber_internal->state == Ygg_Fiber_Internal_State_Not_Started) {
 			//printf("Thread %d: Starting fiber '%s'...\n", thread->thread_index, fiber_internal->fiber.label);
 			

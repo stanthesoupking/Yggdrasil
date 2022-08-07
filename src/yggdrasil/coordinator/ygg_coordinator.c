@@ -194,7 +194,7 @@ void ygg_coordinator_fiber_release(Ygg_Coordinator* coordinator, Ygg_Fiber_Handl
 	}
 }
 
-Ygg_Future* ygg_dispatch_generic(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priority priority, void* input, unsigned int input_length, void* output_ptr) {
+Ygg_Future* ygg_dispatch_generic_async(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priority priority, void* input, unsigned int input_length, void* output_ptr) {
 	ygg_assert(input_length < YGG_MAXIMUM_INPUT_LENGTH, "Maximum input length of %d bytes exceeded.", YGG_MAXIMUM_INPUT_LENGTH);
 	
 	Ygg_Coordinator* coordinator = context->coordinator;
@@ -256,7 +256,7 @@ Ygg_Future* ygg_dispatch_generic(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Prio
 }
 
 void ygg_dispatch_generic_sync(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priority priority, void* input, unsigned int input_length, void* output_ptr) {
-	Ygg_Future* future = ygg_dispatch_generic(context, fiber, priority, input, input_length, output_ptr);
+	Ygg_Future* future = ygg_dispatch_generic_async(context, fiber, priority, input, input_length, output_ptr);
 	ygg_await(context, future);
 	ygg_future_release(future);
 }
