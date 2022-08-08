@@ -7,7 +7,7 @@
 int _multiply_by_two(Ygg_Context* context, int in) {
 	return in * 2;
 }
-ygg_fiber_declare_inout(multiply_by_two, int, int, _multiply_by_two);
+ygg_fiber_declare_inout(multiply_by_two, _multiply_by_two, int, int);
 
 int main(int argc, const char * argv[]) {
 	Ygg_Coordinator_Parameters parameters = {

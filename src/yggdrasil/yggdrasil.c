@@ -15,7 +15,6 @@
 #include "yggdrasil/ygg_spinlock.c"
 #include "yggdrasil/ygg_semaphore.c"
 
-#include "yggdrasil/coordinator/ygg_coordinator.h"
 #include "yggdrasil/worker/ygg_worker_thread.h"
 
 #include "yggdrasil/ygg_fiber_queue.c"
