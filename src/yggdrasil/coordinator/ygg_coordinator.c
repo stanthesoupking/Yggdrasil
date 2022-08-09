@@ -1,5 +1,5 @@
 
-#define YGG_FIBER_STACK_SIZE 128 * 1024
+#define YGG_FIBER_STACK_SIZE 8 * 1024 * 1024 // 8MB
 #define YGG_MAXIMUM_FIBERS 1024
 #define YGG_MAXIMUM_INPUT_LENGTH 64
 #define YGG_MAXIMUM_BARRIERS 1024
@@ -194,7 +194,7 @@ void ygg_coordinator_fiber_release(Ygg_Coordinator* coordinator, Ygg_Fiber_Handl
 	
 	if (previous == 1) {
 		// TODO: Pool these or something, don't use free/malloc
-		free(internal->stack);
+		ygg_virtual_free(internal->stack, YGG_FIBER_STACK_SIZE);
 		
 		ygg_spinlock_lock(&coordinator->fiber_pool_spinlock);
 		ygg_fiber_internal_pool_release(&coordinator->fiber_pool, handle);
@@ -229,7 +229,7 @@ Ygg_Fiber_Handle ygg_dispatch_generic_async(Ygg_Context* context, Ygg_Fiber fibe
 		.rc = 1,
 				
 		// TODO: Pool these or something, don't use free/malloc
-		.stack = calloc(YGG_FIBER_STACK_SIZE, 1),
+		.stack = ygg_virtual_alloc(YGG_FIBER_STACK_SIZE),
 	};
 	
 	if (input != NULL) {
