@@ -20,7 +20,7 @@ Ygg_Worker_Thread* ygg_worker_thread_new(Ygg_Coordinator* coordinator, unsigned 
 		.thread_index = thread_index,
 	};
 	ygg_semaphore_init(&worker_thread->semaphore);
-	ygg_fiber_queue_init(&worker_thread->delayed_queue, YGG_QUEUE_SIZE);
+	ygg_fiber_queue_init(&worker_thread->delayed_queue, 64);
 	return worker_thread;
 }
 void ygg_worker_thread_destroy(Ygg_Worker_Thread* thread) {

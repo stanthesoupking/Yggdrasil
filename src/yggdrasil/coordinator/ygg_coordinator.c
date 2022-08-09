@@ -3,7 +3,6 @@
 #define YGG_MAXIMUM_FIBERS 1024
 #define YGG_MAXIMUM_INPUT_LENGTH 64
 #define YGG_MAXIMUM_BARRIERS 1024
-#define YGG_QUEUE_SIZE 1024 * 10
 
 typedef enum Ygg_Context_Kind {
 	Ygg_Context_Kind_Fiber,
@@ -109,7 +108,7 @@ Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
 	ygg_counter_pool_init(&coordinator->counter_pool, 1);
 		
 	for (unsigned int queue_index = 0; queue_index < YGG_PRIORITY_COUNT; ++queue_index) {
-		ygg_fiber_queue_init(coordinator->fiber_queues + queue_index, YGG_QUEUE_SIZE);
+		ygg_fiber_queue_init(coordinator->fiber_queues + queue_index, 64);
 	}
 	
 	coordinator->worker_threads = malloc(sizeof(Ygg_Worker_Thread*) * parameters.thread_count);
