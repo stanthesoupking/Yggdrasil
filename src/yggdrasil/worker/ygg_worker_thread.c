@@ -24,8 +24,9 @@ Ygg_Worker_Thread* ygg_worker_thread_new(Ygg_Coordinator* coordinator, unsigned 
 	return worker_thread;
 }
 void ygg_worker_thread_destroy(Ygg_Worker_Thread* thread) {
+	ygg_semaphore_deinit(&thread->semaphore);
+	ygg_fiber_queue_deinit(&thread->delayed_queue);
 	free(thread);
-	*thread = (Ygg_Worker_Thread){};
 }
 
 void* _ygg_thread(void* data);
@@ -33,8 +34,8 @@ void ygg_worker_thread_start(Ygg_Worker_Thread* thread) {
 	pthread_create(&thread->thread, NULL, _ygg_thread, thread);
 }
 
-void ygg_worker_thread_shutdown(Ygg_Worker_Thread* thread) {
-	
+void ygg_worker_thread_join(Ygg_Worker_Thread* thread) {
+	pthread_join(thread->thread, NULL);
 }
 
 ygg_internal bool ygg_worker_thread_next_fiber(Ygg_Worker_Thread* thread, Ygg_Fiber_Handle* handle) {
@@ -67,6 +68,10 @@ void* _ygg_thread(void* data) {
 		// Get next fiber
 		Ygg_Fiber_Handle fiber_handle;
 		while(!ygg_worker_thread_next_fiber(thread, &fiber_handle)) {
+			if (coordinator->shutting_down && (thread->delayed_queue.count == 0) && !ygg_coordinator_has_nonempty_queue(coordinator)) {
+				return NULL;
+			}
+			
 			// Wait for coordinator semaphore to update and tell us something has changed
 			ygg_semaphore_wait(&thread->semaphore);
 		}

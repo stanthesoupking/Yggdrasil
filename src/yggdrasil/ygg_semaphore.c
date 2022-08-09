@@ -1,35 +1,17 @@
 
-typedef struct Ygg_Mutex {
-	pthread_mutex_t mutex;
-} Ygg_Mutex;
-
-void ygg_mutex_init(Ygg_Mutex* mutex) {
-	pthread_mutex_init(&mutex->mutex, NULL);
-}
-
-void ygg_mutex_deinit(Ygg_Mutex* mutex) {
-	pthread_mutex_destroy(&mutex->mutex);
-}
-
-void ygg_mutex_lock(Ygg_Mutex* mutex) {
-	pthread_mutex_lock(&mutex->mutex);
-}
-
-void ygg_mutex_unlock(Ygg_Mutex* mutex) {
-	pthread_mutex_unlock(&mutex->mutex);
-}
-
 typedef struct Ygg_Semaphore {
 	pthread_cond_t cond;
 	pthread_mutex_t mutex;
 	bool signalled;
 } Ygg_Semaphore;
-
-void ygg_semaphore_init(Ygg_Semaphore* semaphore) {
+ygg_inline void ygg_semaphore_init(Ygg_Semaphore* semaphore) {
 	pthread_cond_init(&semaphore->cond, NULL);
 	pthread_mutex_init(&semaphore->mutex, NULL);
 }
-
+ygg_inline void ygg_semaphore_deinit(Ygg_Semaphore* semaphore) {
+	pthread_cond_destroy(&semaphore->cond);
+	pthread_mutex_destroy(&semaphore->mutex);
+}
 ygg_inline void ygg_semaphore_signal(Ygg_Semaphore* semaphore) {
 	pthread_mutex_lock(&semaphore->mutex);
 	semaphore->signalled = true;

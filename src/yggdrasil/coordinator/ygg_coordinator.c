@@ -90,6 +90,8 @@ typedef struct Ygg_Coordinator {
 	unsigned int worker_thread_count;
 	
 	Ygg_Context blocking_context;
+	
+	bool shutting_down;
 } Ygg_Coordinator;
 
 Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
@@ -120,11 +122,31 @@ Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
 	return coordinator;
 }
 void ygg_coordinator_destroy(Ygg_Coordinator* coordinator) {
+	coordinator->shutting_down = true;
+	
+	// Wait for all workers to shutdown
+	for (unsigned int worker_index = 0; worker_index < coordinator->worker_thread_count; worker_index++) {
+		ygg_semaphore_signal(ygg_worker_thread_semaphore(coordinator->worker_threads[worker_index]));
+		ygg_worker_thread_join(coordinator->worker_threads[worker_index]);
+		ygg_worker_thread_destroy(coordinator->worker_threads[worker_index]);
+	}
+	free(coordinator->worker_threads);
+	
+	ygg_counter_pool_deinit(&coordinator->counter_pool);
+	ygg_fiber_internal_pool_deinit(&coordinator->fiber_pool);
+	ygg_context_node_pool_deinit(&coordinator->context_node_pool);
+	
 	for (unsigned int queue_index = 0; queue_index < YGG_PRIORITY_COUNT; ++queue_index) {
 		ygg_fiber_queue_deinit(coordinator->fiber_queues + queue_index);
 	}
 	*coordinator = (Ygg_Coordinator) { };
 	free(coordinator);
+}
+bool ygg_coordinator_has_nonempty_queue(Ygg_Coordinator* coordinator) {
+	for (unsigned int i = 0; i < YGG_PRIORITY_COUNT; ++i) {
+		if (coordinator->fiber_queues[i].count > 0) { return true; }
+	}
+	return false;
 }
 
 Ygg_Context* ygg_blocking_context_new(Ygg_Coordinator* coordinator) {
@@ -139,6 +161,8 @@ Ygg_Context* ygg_blocking_context_new(Ygg_Coordinator* coordinator) {
 }
 void ygg_blocking_context_destroy(Ygg_Context* blocking_context) {
 	ygg_assert(blocking_context->kind == Ygg_Context_Kind_Blocking, "");
+	ygg_semaphore_deinit(&blocking_context->semaphore);
+	free(blocking_context);
 }
 Ygg_Coordinator* ygg_context_coordinator(Ygg_Context* context) {
 	return context->coordinator;
