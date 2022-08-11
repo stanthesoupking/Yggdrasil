@@ -99,13 +99,17 @@ void* _ygg_thread(void* data) {
 				ygg_spinlock_lock(&fiber_internal->spinlock);
 				fiber_internal->state = Ygg_Fiber_Internal_State_Complete;
 				
-				// Decrement and release all registered counteres
-				for (unsigned int counter_index = 0; counter_index < fiber_internal->registered_counter_count; ++counter_index) {
-					Ygg_Counter_Handle counter = fiber_internal->registered_counters[counter_index];
-					ygg_counter_decrement(counter, 1);
-					ygg_counter_release(counter);
+				// Decrement and release all registered counters
+				ygg_spinlock_lock(&coordinator->counter_node_pool_spinlock);
+				Ygg_Counter_Node* counter_node = fiber_internal->registered_counters;
+				while (counter_node != NULL) {
+					ygg_counter_decrement(counter_node->handle, 1);
+					ygg_counter_release(counter_node->handle);
+					Ygg_Counter_Node* next = counter_node->next;
+					ygg_counter_node_pool_release(&coordinator->counter_node_pool, counter_node);
+					counter_node = next;
 				}
-				
+				ygg_spinlock_unlock(&coordinator->counter_node_pool_spinlock);
 				ygg_spinlock_unlock(&fiber_internal->spinlock);
 				
 				ygg_coordinator_fiber_release(coordinator, fiber_handle);

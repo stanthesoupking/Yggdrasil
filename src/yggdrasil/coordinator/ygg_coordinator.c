@@ -27,6 +27,13 @@ typedef struct Ygg_Context_Node {
 } Ygg_Context_Node;
 ygg_pool(Ygg_Context_Node, Ygg_Context_Node_Pool, ygg_context_node_pool);
 
+typedef struct Ygg_Counter_Node Ygg_Counter_Node;
+typedef struct Ygg_Counter_Node {
+	Ygg_Counter_Handle handle;
+	Ygg_Counter_Node* next;
+} Ygg_Counter_Node;
+ygg_pool(Ygg_Counter_Node, Ygg_Counter_Node_Pool, ygg_counter_node_pool);
+
 typedef struct Ygg_Counter_Internal {
 	unsigned int generation;
 	Ygg_Coordinator* coordinator;
@@ -64,8 +71,7 @@ typedef struct Ygg_Fiber_Internal {
 	Ygg_CPU_State resume_state;
 	Ygg_CPU_State suspend_state;
 	
-	Ygg_Counter_Handle registered_counters[16];
-	unsigned int registered_counter_count;
+	Ygg_Counter_Node* registered_counters;
 	
 	void* stack;
 } Ygg_Fiber_Internal;
@@ -85,6 +91,9 @@ typedef struct Ygg_Coordinator {
 
 	Ygg_Spinlock context_node_pool_spinlock;
 	Ygg_Context_Node_Pool context_node_pool;
+	
+	Ygg_Spinlock counter_node_pool_spinlock;
+	Ygg_Counter_Node_Pool counter_node_pool;
 	
 	Ygg_Fiber_Queue fiber_queues[YGG_PRIORITY_COUNT];
 	
@@ -122,6 +131,7 @@ Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
 	}
 	
 	ygg_context_node_pool_init(&coordinator->context_node_pool, parameters.maximum_fibers);
+	ygg_counter_node_pool_init(&coordinator->counter_node_pool, parameters.maximum_fibers);
 		
 	for (unsigned int queue_index = 0; queue_index < YGG_PRIORITY_COUNT; ++queue_index) {
 		ygg_fiber_queue_init(coordinator->fiber_queues + queue_index, parameters.queue_capacity);
@@ -152,6 +162,7 @@ void ygg_coordinator_destroy(Ygg_Coordinator* coordinator) {
 	free(coordinator->counters);
 	
 	ygg_context_node_pool_deinit(&coordinator->context_node_pool);
+	ygg_counter_node_pool_deinit(&coordinator->counter_node_pool);
 	
 	for (unsigned int queue_index = 0; queue_index < YGG_PRIORITY_COUNT; ++queue_index) {
 		ygg_fiber_queue_deinit(coordinator->fiber_queues + queue_index);
@@ -245,7 +256,7 @@ Ygg_Fiber_Handle ygg_dispatch_generic_async(Ygg_Context* context, Ygg_Fiber fibe
 		.coordinator = coordinator,
 		.fiber_handle = handle
 	};
-	internal->registered_counter_count = 0;
+	internal->registered_counters = NULL;
 	internal->owner_thread = NULL;
 	
 	// Retained by coordinator until fiber has been executed
@@ -407,7 +418,18 @@ void ygg_counter_await_completion(Ygg_Counter_Handle counter, Ygg_Fiber_Handle f
 		ygg_spinlock_unlock(&internal->spinlock);
 	} else {
 		ygg_counter_increment(counter, 1);
-		internal->registered_counters[internal->registered_counter_count++] = counter;
+		
+		
+		ygg_spinlock_lock(&coordinator->counter_node_pool_spinlock);
+		Ygg_Counter_Node* counter_node = ygg_counter_node_pool_acquire(&coordinator->counter_node_pool);
+		ygg_spinlock_unlock(&coordinator->counter_node_pool_spinlock);
+		
+		*counter_node = (Ygg_Counter_Node) {
+			.handle = counter,
+			.next = internal->registered_counters,
+		};
+		internal->registered_counters = counter_node;
+		
 		ygg_counter_retain(counter); // retained by fiber
 		ygg_spinlock_unlock(&internal->spinlock);
 	}
