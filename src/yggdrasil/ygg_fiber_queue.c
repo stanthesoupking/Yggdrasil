@@ -7,10 +7,10 @@ typedef struct Ygg_Fiber_Queue {
 	unsigned int capacity;
 } Ygg_Fiber_Queue;
 
-ygg_internal void ygg_fiber_queue_init(Ygg_Fiber_Queue* queue, unsigned int initial_capacity) {
+ygg_internal void ygg_fiber_queue_init(Ygg_Fiber_Queue* queue, unsigned int capacity) {
 	*queue = (Ygg_Fiber_Queue) {
-		.handles = malloc(sizeof(Ygg_Fiber_Handle) * initial_capacity),
-		.capacity = initial_capacity,
+		.handles = malloc(sizeof(Ygg_Fiber_Handle) * capacity),
+		.capacity = capacity,
 	};
 }
 ygg_internal void ygg_fiber_queue_deinit(Ygg_Fiber_Queue* queue) {
@@ -20,25 +20,6 @@ ygg_internal void ygg_fiber_queue_deinit(Ygg_Fiber_Queue* queue) {
 
 ygg_internal void ygg_fiber_queue_push(Ygg_Fiber_Queue* queue, Ygg_Fiber_Handle handle) {
 	ygg_spinlock_lock(&queue->spinlock);
-	
-	// Resize the backing memory if required
-	if (queue->count + 1 >= queue->capacity) {
-		unsigned int new_capacity = queue->capacity + 256;
-		Ygg_Fiber_Handle* new_handles = malloc(sizeof(Ygg_Fiber_Handle) * new_capacity);
-		
-		// Copy over old data
-		unsigned int index = 0;
-		while (queue->head != queue->tail) {
-			new_handles[index++] = queue->handles[queue->head];
-			queue->head = (queue->head + 1) % queue->capacity;
-		}
-		
-		free(queue->handles);
-		queue->handles = new_handles;
-		queue->head = 0;
-		queue->tail = queue->count;
-		queue->capacity = new_capacity;
-	}
 	
 	ygg_assert(queue->count + 1 < queue->capacity, "Queue capacity exceeded");
 	++queue->count;

@@ -13,6 +13,10 @@
 // ----------------------------------
 typedef struct Ygg_Coordinator_Parameters {
 	unsigned int thread_count;
+	
+	unsigned int maximum_fibers;
+	unsigned int maximum_counters;
+	unsigned int queue_capacity;
 } Ygg_Coordinator_Parameters;
 
 typedef struct Ygg_Coordinator Ygg_Coordinator;

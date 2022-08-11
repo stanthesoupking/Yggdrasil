@@ -12,6 +12,9 @@ ygg_fiber_declare_inout(multiply_by_two, _multiply_by_two, int, int);
 int main(int argc, const char * argv[]) {
 	Ygg_Coordinator_Parameters parameters = {
 		.thread_count = 8,
+		.maximum_fibers = 1024,
+		.maximum_counters = 1024,
+		.queue_capacity = 1024,
 	};
 	
 	Ygg_Coordinator* coordinator = ygg_coordinator_new(parameters);

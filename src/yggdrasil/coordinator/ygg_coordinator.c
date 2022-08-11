@@ -1,9 +1,6 @@
 
 #define YGG_FIBER_STACK_SIZE 128 * 1024 // 128KB
-
-#define YGG_MAXIMUM_FIBERS 1024
 #define YGG_MAXIMUM_INPUT_LENGTH 64
-#define YGG_MAXIMUM_BARRIERS 1024
 
 typedef enum Ygg_Context_Kind {
 	Ygg_Context_Kind_Fiber,
@@ -30,7 +27,7 @@ typedef struct Ygg_Context_Node {
 } Ygg_Context_Node;
 ygg_pool(Ygg_Context_Node, Ygg_Context_Node_Pool, ygg_context_node_pool);
 
-typedef struct Ygg_Counter {
+typedef struct Ygg_Counter_Internal {
 	unsigned int generation;
 	Ygg_Coordinator* coordinator;
 	Ygg_Spinlock spinlock;
@@ -38,8 +35,7 @@ typedef struct Ygg_Counter {
 	atomic_uint counter;
 	
 	Ygg_Context_Node* waiting;
-} Ygg_Counter;
-ygg_growable_pool(Ygg_Counter, Ygg_Counter_Handle, Ygg_Counter_Pool, ygg_counter_pool, 64);
+} Ygg_Counter_Internal;
 
 typedef enum Ygg_Fiber_Internal_State {
 	Ygg_Fiber_Internal_State_Not_Started,
@@ -76,15 +72,19 @@ typedef struct Ygg_Fiber_Internal {
 
 typedef struct Ygg_Coordinator {
 	Ygg_Spinlock fiber_freelist_spinlock;
-	unsigned int fiber_freelist[YGG_MAXIMUM_FIBERS];
+	unsigned int* fiber_freelist;
 	unsigned int fiber_freelist_length;
-	Ygg_Fiber_Internal fibers[YGG_MAXIMUM_FIBERS];
+	Ygg_Fiber_Internal* fibers;
+	unsigned int maximum_fibers;
+	
+	Ygg_Spinlock counter_freelist_spinlock;
+	unsigned int* counter_freelist;
+	unsigned int counter_freelist_length;
+	Ygg_Counter_Internal* counters;
+	unsigned int maximum_counters;
 
 	Ygg_Spinlock context_node_pool_spinlock;
 	Ygg_Context_Node_Pool context_node_pool;
-	
-	Ygg_Spinlock counter_pool_spinlock;
-	Ygg_Counter_Pool counter_pool;
 	
 	Ygg_Fiber_Queue fiber_queues[YGG_PRIORITY_COUNT];
 	
@@ -105,18 +105,26 @@ Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
 			.coordinator = coordinator,
 			.kind = Ygg_Context_Kind_Blocking,
 		},
+		.fiber_freelist = malloc(sizeof(unsigned int) * parameters.maximum_fibers),
+		.fibers = malloc(sizeof(Ygg_Fiber_Internal) * parameters.maximum_fibers),
+		.counter_freelist = malloc(sizeof(unsigned int) * parameters.maximum_counters),
+		.counters = malloc(sizeof(Ygg_Counter_Internal) * parameters.maximum_counters),
 	};
 	
-	coordinator->fiber_freelist_length = YGG_MAXIMUM_FIBERS;
-	for (unsigned int i = 0; i < YGG_MAXIMUM_FIBERS; ++i) {
-		coordinator->fiber_freelist[i] = YGG_MAXIMUM_FIBERS - i - 1;
+	coordinator->fiber_freelist_length = parameters.maximum_fibers;
+	for (unsigned int i = 0; i < parameters.maximum_fibers; ++i) {
+		coordinator->fiber_freelist[i] = parameters.maximum_fibers - i - 1;
 	}
 	
-	ygg_context_node_pool_init(&coordinator->context_node_pool, YGG_MAXIMUM_FIBERS);
-	ygg_counter_pool_init(&coordinator->counter_pool, 1);
+	coordinator->counter_freelist_length = parameters.maximum_counters;
+	for (unsigned int i = 0; i < parameters.maximum_counters; ++i) {
+		coordinator->counter_freelist[i] = parameters.maximum_counters - i - 1;
+	}
+	
+	ygg_context_node_pool_init(&coordinator->context_node_pool, parameters.maximum_fibers);
 		
 	for (unsigned int queue_index = 0; queue_index < YGG_PRIORITY_COUNT; ++queue_index) {
-		ygg_fiber_queue_init(coordinator->fiber_queues + queue_index, 64);
+		ygg_fiber_queue_init(coordinator->fiber_queues + queue_index, parameters.queue_capacity);
 	}
 	
 	coordinator->worker_threads = malloc(sizeof(Ygg_Worker_Thread*) * parameters.thread_count);
@@ -138,7 +146,11 @@ void ygg_coordinator_destroy(Ygg_Coordinator* coordinator) {
 	}
 	free(coordinator->worker_threads);
 	
-	ygg_counter_pool_deinit(&coordinator->counter_pool);
+	free(coordinator->fiber_freelist);
+	free(coordinator->fibers);
+	free(coordinator->counter_freelist);
+	free(coordinator->counters);
+	
 	ygg_context_node_pool_deinit(&coordinator->context_node_pool);
 	
 	for (unsigned int queue_index = 0; queue_index < YGG_PRIORITY_COUNT; ++queue_index) {
@@ -311,61 +323,63 @@ void ygg_context_suspend(Ygg_Context* context) {
 
 // MARK: Counter
 Ygg_Counter_Handle ygg_counter_new(Ygg_Coordinator* coordinator) {
-	ygg_spinlock_lock(&coordinator->counter_pool_spinlock);
-	Ygg_Counter_Handle handle = ygg_counter_pool_acquire(&coordinator->counter_pool);
-	Ygg_Counter* counter = ygg_counter_pool_deref(&coordinator->counter_pool, handle);
-	ygg_spinlock_unlock(&coordinator->counter_pool_spinlock);
+	ygg_spinlock_lock(&coordinator->counter_freelist_spinlock);
+	ygg_assert(coordinator->counter_freelist_length > 0, "Counter limit exceeded");
+	unsigned int index = coordinator->counter_freelist[--coordinator->counter_freelist_length];
+	ygg_spinlock_unlock(&coordinator->counter_freelist_spinlock);
 	
-	handle.coordinator = coordinator;
-	
-	ygg_spinlock_init(&counter->spinlock);
-	counter->rc = 1;
-	counter->waiting = NULL;
-	counter->counter = 0;
-	counter->coordinator = coordinator;
+	Ygg_Counter_Internal* internal = coordinator->counters + index;
+	Ygg_Counter_Handle handle = (Ygg_Counter_Handle) {
+		.coordinator = coordinator,
+		.index = index,
+		.generation = ++internal->generation,
+	};
+		
+	ygg_spinlock_init(&internal->spinlock);
+	internal->rc = 1;
+	internal->waiting = NULL;
+	internal->counter = 0;
+	internal->coordinator = coordinator;
 	
 	return handle;
 }
 void ygg_counter_retain(Ygg_Counter_Handle counter) {
-	ygg_spinlock_lock(&counter.coordinator->counter_pool_spinlock);
-	Ygg_Counter* counter_internal = ygg_counter_pool_deref(&counter.coordinator->counter_pool, counter);
-	ygg_spinlock_unlock(&counter.coordinator->counter_pool_spinlock);
-	atomic_fetch_add_explicit(&counter_internal->rc, 1, memory_order_acq_rel);
+	Ygg_Counter_Internal* internal = counter.coordinator->counters + counter.index;
+	ygg_assert(internal->generation == counter.generation, "Invalid counter handle");
+	atomic_fetch_add_explicit(&internal->rc, 1, memory_order_acq_rel);
 }
 void ygg_counter_release(Ygg_Counter_Handle counter) {
-	ygg_spinlock_lock(&counter.coordinator->counter_pool_spinlock);
-	Ygg_Counter* counter_internal = ygg_counter_pool_deref(&counter.coordinator->counter_pool, counter);
-	ygg_spinlock_unlock(&counter.coordinator->counter_pool_spinlock);
-	unsigned int prev = atomic_fetch_sub_explicit(&counter_internal->rc, 1, memory_order_acq_rel);
-	ygg_assert(prev > 0, "Don't underflow");
+	Ygg_Counter_Internal* internal = counter.coordinator->counters + counter.index;
+	ygg_assert(internal->generation == counter.generation, "Invalid counter handle");
+	unsigned int prev = atomic_fetch_sub_explicit(&internal->rc, 1, memory_order_acq_rel);
 	
+	ygg_assert(prev > 0, "Don't underflow");
 	if (prev == 1) {
-		ygg_spinlock_lock(&counter.coordinator->counter_pool_spinlock);
-		ygg_counter_pool_release(&counter.coordinator->counter_pool, counter);
-		ygg_spinlock_unlock(&counter.coordinator->counter_pool_spinlock);
+		ygg_spinlock_lock(&counter.coordinator->counter_freelist_spinlock);
+		counter.coordinator->counter_freelist[counter.coordinator->counter_freelist_length++] = counter.index;
+		++internal->generation;
+		ygg_spinlock_unlock(&counter.coordinator->counter_freelist_spinlock);
 	}
 }
 
 void ygg_counter_increment(Ygg_Counter_Handle counter, unsigned int n) {
-	ygg_spinlock_lock(&counter.coordinator->counter_pool_spinlock);
-	Ygg_Counter* counter_internal = ygg_counter_pool_deref(&counter.coordinator->counter_pool, counter);
-	ygg_spinlock_unlock(&counter.coordinator->counter_pool_spinlock);
+	Ygg_Counter_Internal* internal = counter.coordinator->counters + counter.index;
+	ygg_assert(internal->generation == counter.generation, "Invalid counter handle");
 	
-	ygg_spinlock_lock(&counter_internal->spinlock);
-	atomic_fetch_add_explicit(&counter_internal->counter, n, memory_order_acq_rel);
-	ygg_spinlock_unlock(&counter_internal->spinlock);
+	ygg_spinlock_lock(&internal->spinlock);
+	atomic_fetch_add_explicit(&internal->counter, n, memory_order_acq_rel);
+	ygg_spinlock_unlock(&internal->spinlock);
 }
 void ygg_counter_decrement(Ygg_Counter_Handle counter, unsigned int n) {
-	ygg_spinlock_lock(&counter.coordinator->counter_pool_spinlock);
-	Ygg_Counter* counter_internal = ygg_counter_pool_deref(&counter.coordinator->counter_pool, counter);
-	ygg_spinlock_unlock(&counter.coordinator->counter_pool_spinlock);
+	Ygg_Counter_Internal* internal = counter.coordinator->counters + counter.index;
+	ygg_assert(internal->generation == counter.generation, "Invalid counter handle");
 	
-	ygg_spinlock_lock(&counter_internal->spinlock);
-	unsigned int prev = atomic_fetch_sub_explicit(&counter_internal->counter, n, memory_order_acq_rel);
+	ygg_spinlock_lock(&internal->spinlock);
+	unsigned int prev = atomic_fetch_sub_explicit(&internal->counter, n, memory_order_acq_rel);
 	ygg_assert(prev > 0, "Don't underflow");
 	if (prev == 1) {
 		// Wake up blocked fibers
-		Ygg_Context_Node* entry = counter_internal->waiting;
+		Ygg_Context_Node* entry = internal->waiting;
 		while (entry != NULL) {
 			Ygg_Coordinator* coordinator = entry->context->coordinator;
 			ygg_context_resume(entry->context);
@@ -378,7 +392,7 @@ void ygg_counter_decrement(Ygg_Counter_Handle counter, unsigned int n) {
 			entry = next;
 		}
 	}
-	ygg_spinlock_unlock(&counter_internal->spinlock);
+	ygg_spinlock_unlock(&internal->spinlock);
 }
 void ygg_counter_await_completion(Ygg_Counter_Handle counter, Ygg_Fiber_Handle fiber_handle) {
 	Ygg_Coordinator* coordinator = counter.coordinator;
@@ -402,13 +416,12 @@ void ygg_counter_await_completion(Ygg_Counter_Handle counter, Ygg_Fiber_Handle f
 void ygg_counter_wait(Ygg_Counter_Handle counter, Ygg_Context* context) {
 	Ygg_Coordinator* coordinator = counter.coordinator;
 
-	ygg_spinlock_lock(&coordinator->counter_pool_spinlock);
-	Ygg_Counter* counter_internal = ygg_counter_pool_deref(&coordinator->counter_pool, counter);
-	ygg_spinlock_unlock(&coordinator->counter_pool_spinlock);
+	Ygg_Counter_Internal* internal = counter.coordinator->counters + counter.index;
+	ygg_assert(internal->generation == counter.generation, "Invalid counter handle");
 	
-	ygg_spinlock_lock(&counter_internal->spinlock);
-	if (counter_internal->counter == 0) {
-		ygg_spinlock_unlock(&counter_internal->spinlock);
+	ygg_spinlock_lock(&internal->spinlock);
+	if (internal->counter == 0) {
+		ygg_spinlock_unlock(&internal->spinlock);
 		return;
 	}
 	
@@ -419,13 +432,13 @@ void ygg_counter_wait(Ygg_Counter_Handle counter, Ygg_Context* context) {
 	*entry = (Ygg_Context_Node) {
 		.context = context,
 	};
-	if (counter_internal->waiting == NULL) {
-		counter_internal->waiting = entry;
+	if (internal->waiting == NULL) {
+		internal->waiting = entry;
 	} else {
-		entry->next = counter_internal->waiting;
-		counter_internal->waiting = entry;
+		entry->next = internal->waiting;
+		internal->waiting = entry;
 	}
 	
-	ygg_spinlock_unlock(&counter_internal->spinlock);
+	ygg_spinlock_unlock(&internal->spinlock);
 	ygg_context_suspend(context);
 }
