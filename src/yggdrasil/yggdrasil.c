@@ -11,7 +11,6 @@
 #include <unistd.h>
 
 #include "yggdrasil/ygg_macro.c"
-#include "yggdrasil/ygg_memory.c"
 #include "yggdrasil/ygg_cpu.c"
 #include "yggdrasil/ygg_spinlock.c"
 #include "yggdrasil/ygg_semaphore.c"

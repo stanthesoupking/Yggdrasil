@@ -28,12 +28,10 @@ void ygg_worker_thread_destroy(Ygg_Worker_Thread* thread) {
 	ygg_fiber_queue_deinit(&thread->delayed_queue);
 	free(thread);
 }
-
 void* _ygg_thread(void* data);
 void ygg_worker_thread_start(Ygg_Worker_Thread* thread) {
 	pthread_create(&thread->thread, NULL, _ygg_thread, thread);
 }
-
 void ygg_worker_thread_join(Ygg_Worker_Thread* thread) {
 	pthread_join(thread->thread, NULL);
 }
@@ -76,9 +74,8 @@ void* _ygg_thread(void* data) {
 			ygg_semaphore_wait(&thread->semaphore);
 		}
 
-		ygg_spinlock_lock(&coordinator->fiber_pool_spinlock);
-		Ygg_Fiber_Internal* fiber_internal = ygg_fiber_internal_pool_deref(&coordinator->fiber_pool, fiber_handle);
-		ygg_spinlock_unlock(&coordinator->fiber_pool_spinlock);
+		Ygg_Fiber_Internal* fiber_internal = coordinator->fibers + fiber_handle.index;
+		ygg_assert(fiber_internal->generation == fiber_handle.generation, "Invalid fiber handle");
 		
 		ygg_update_thread_label("Fiber '%s'", fiber_internal->fiber.label);
 		if (fiber_internal->state == Ygg_Fiber_Internal_State_Not_Started) {
@@ -90,7 +87,6 @@ void* _ygg_thread(void* data) {
 			fiber_internal->state = Ygg_Fiber_Internal_State_Running;
 			ygg_spinlock_unlock(&fiber_internal->spinlock);
 						
-			// NOTE: Not sure if == 0 is correct for fibers that resume more than once...
 			ygg_cpu_state_store(fiber_internal->suspend_state);
 			if (fiber_internal->state == Ygg_Fiber_Internal_State_Running) {
 				void* sp = fiber_internal->stack + YGG_FIBER_STACK_SIZE;
@@ -130,15 +126,13 @@ void* _ygg_thread(void* data) {
 	return NULL;
 }
 
-void ygg_worker_thread_push_delayed_fiber(Ygg_Worker_Thread* thread, Ygg_Fiber_Handle handle) {
+void ygg_worker_thread_push_delayed_fiber(Ygg_Worker_Thread* thread, Ygg_Fiber_Handle fiber_handle) {
 	Ygg_Coordinator* coordinator = thread->coordinator;
-	ygg_spinlock_lock(&coordinator->fiber_pool_spinlock);
-	Ygg_Fiber_Internal* fiber_internal = ygg_fiber_internal_pool_deref(&coordinator->fiber_pool, handle);
-	ygg_spinlock_unlock(&coordinator->fiber_pool_spinlock);
-	
+	Ygg_Fiber_Internal* fiber_internal = coordinator->fibers + fiber_handle.index;
+	ygg_assert(fiber_internal->generation == fiber_handle.generation, "Invalid fiber handle");
 	ygg_assert(fiber_internal->owner_thread == thread, "Fiber can only be pushed to execute on its owning thread");
 	ygg_assert(fiber_internal->state == Ygg_Fiber_Internal_State_Suspended, "Fiber should be suspended");
-	ygg_fiber_queue_push(&thread->delayed_queue, handle);
+	ygg_fiber_queue_push(&thread->delayed_queue, fiber_handle);
 	ygg_semaphore_signal(&thread->semaphore);
 }
 

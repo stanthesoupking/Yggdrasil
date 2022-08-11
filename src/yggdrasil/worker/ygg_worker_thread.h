@@ -7,6 +7,6 @@ void ygg_worker_thread_destroy(Ygg_Worker_Thread* thread);
 void ygg_worker_thread_start(Ygg_Worker_Thread* thread);
 void ygg_worker_thread_join(Ygg_Worker_Thread* thread);
 
-void ygg_worker_thread_push_delayed_fiber(Ygg_Worker_Thread* thread, Ygg_Fiber_Handle handle);
+void ygg_worker_thread_push_delayed_fiber(Ygg_Worker_Thread* thread, Ygg_Fiber_Handle fiber_handle);
 
 Ygg_Semaphore* ygg_worker_thread_semaphore(Ygg_Worker_Thread* thread);
