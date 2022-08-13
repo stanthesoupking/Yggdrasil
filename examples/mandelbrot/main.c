@@ -86,11 +86,13 @@ void _mb_gen(Ygg_Context* context) {
 	}
 	printf("Waiting for worker completion\n");
 	ygg_counter_wait(counter, context);
+	ygg_counter_release(counter);
 	
 	printf("Writing to file\n");
 	mb_write_dispatch_sync(context, Ygg_Priority_Normal, pixel_data);
 	
 	printf("Finished\n");
+	free(pixel_data);
 }
 ygg_fiber_declare(mb_gen, _mb_gen);
 

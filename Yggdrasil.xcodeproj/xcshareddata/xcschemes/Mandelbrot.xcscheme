@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "02F3B376289AA02C00ADC971"
-               BuildableName = "Yggdrasil Example"
+               BuildableName = "Mandelbrot"
                BlueprintName = "Mandelbrot"
                ReferencedContainer = "container:Yggdrasil.xcodeproj">
             </BuildableReference>
@@ -45,7 +45,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "02F3B376289AA02C00ADC971"
-            BuildableName = "Yggdrasil Example"
+            BuildableName = "Mandelbrot"
             BlueprintName = "Mandelbrot"
             ReferencedContainer = "container:Yggdrasil.xcodeproj">
          </BuildableReference>
@@ -62,7 +62,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "02F3B376289AA02C00ADC971"
-            BuildableName = "Yggdrasil Example"
+            BuildableName = "Mandelbrot"
             BlueprintName = "Mandelbrot"
             ReferencedContainer = "container:Yggdrasil.xcodeproj">
          </BuildableReference>
