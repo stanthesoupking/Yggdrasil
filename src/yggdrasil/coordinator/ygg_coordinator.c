@@ -115,9 +115,9 @@ Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
 			.kind = Ygg_Context_Kind_Blocking,
 		},
 		.fiber_freelist = malloc(sizeof(unsigned int) * parameters.maximum_fibers),
-		.fibers = malloc(sizeof(Ygg_Fiber_Internal) * parameters.maximum_fibers),
+		.fibers = calloc(1, sizeof(Ygg_Fiber_Internal) * parameters.maximum_fibers),
 		.counter_freelist = malloc(sizeof(unsigned int) * parameters.maximum_counters),
-		.counters = malloc(sizeof(Ygg_Counter_Internal) * parameters.maximum_counters),
+		.counters = calloc(1, sizeof(Ygg_Counter_Internal) * parameters.maximum_counters),
 	};
 	
 	coordinator->fiber_freelist_length = parameters.maximum_fibers;
@@ -409,11 +409,12 @@ void ygg_counter_await_completion(Ygg_Counter_Handle counter, Ygg_Fiber_Handle f
 	Ygg_Coordinator* coordinator = counter.coordinator;
 	
 	Ygg_Fiber_Internal* internal = coordinator->fibers + fiber_handle.index;
+	ygg_spinlock_lock(&internal->spinlock);
 	if (internal->generation != fiber_handle.generation) {
+		ygg_spinlock_unlock(&internal->spinlock);
 		return;
 	}
 	
-	ygg_spinlock_lock(&internal->spinlock);
 	if (internal->state == Ygg_Fiber_Internal_State_Complete) {
 		ygg_spinlock_unlock(&internal->spinlock);
 	} else {

@@ -110,9 +110,8 @@ void* _ygg_thread(void* data) {
 					counter_node = next;
 				}
 				ygg_spinlock_unlock(&coordinator->counter_node_pool_spinlock);
-				ygg_spinlock_unlock(&fiber_internal->spinlock);
-				
 				ygg_coordinator_fiber_release(coordinator, fiber_handle);
+				ygg_spinlock_unlock(&fiber_internal->spinlock);
 			}
 		} else {
 			//printf("Thread %d: Resuming fiber '%s'...\n", thread->thread_index, fiber_internal->fiber.label);
