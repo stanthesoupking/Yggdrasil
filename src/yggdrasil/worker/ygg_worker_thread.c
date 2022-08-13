@@ -50,7 +50,9 @@ ygg_internal bool ygg_worker_thread_next_fiber(Ygg_Worker_Thread* thread, Ygg_Fi
 	return false;
 }
 
-void* _ygg_thread(void* data) {
+// NOTE: Disabling optimisations to prevent inline assembly from being shifted around
+// NOTE: Disabling ASan to avoid false-positives due to altering the stack pointer
+void* ygg_disable_optimisations ygg_disable_asan _ygg_thread(void* data) {
 	Ygg_Worker_Thread* thread = data;
 	Ygg_Coordinator* coordinator = thread->coordinator;
 	
@@ -79,7 +81,7 @@ void* _ygg_thread(void* data) {
 		
 		ygg_update_thread_label("Fiber '%s'", fiber_internal->fiber.label);
 		if (fiber_internal->state == Ygg_Fiber_Internal_State_Not_Started) {
-			//printf("Thread %d: Starting fiber '%s'...\n", thread->thread_index, fiber_internal->fiber.label);
+			// printf("Thread %d: Starting fiber '%s' (idx: %d, gen: %d)...\n", thread->thread_index, fiber_internal->fiber.label, fiber_handle.index, fiber_handle.generation);
 			
 			fiber_internal->owner_thread = thread;
 			
@@ -95,9 +97,11 @@ void* _ygg_thread(void* data) {
 				void* output = fiber_internal->output;
 				ygg_fiber_boot(sp, fiber_internal->fiber.func, ctx, input, output);
 								
-				//printf("Thread %d: Completed fiber '%s'.\n", thread->thread_index, fiber_internal->fiber.label);
+				// printf("Thread %d: Completed fiber '%s' (idx: %d, gen: %d).\n", thread->thread_index, fiber_internal->fiber.label, fiber_handle.index, fiber_handle.generation);
 				ygg_spinlock_lock(&fiber_internal->spinlock);
 				fiber_internal->state = Ygg_Fiber_Internal_State_Complete;
+				
+				ygg_assert(fiber_internal != NULL, "Fiber internal can't be NULL");
 				
 				// Decrement and release all registered counters
 				ygg_spinlock_lock(&coordinator->counter_node_pool_spinlock);
@@ -114,13 +118,13 @@ void* _ygg_thread(void* data) {
 				ygg_spinlock_unlock(&fiber_internal->spinlock);
 			}
 		} else {
-			//printf("Thread %d: Resuming fiber '%s'...\n", thread->thread_index, fiber_internal->fiber.label);
+			// printf("Thread %d: Resuming fiber '%s' (idx: %d, gen: %d)...\n", thread->thread_index, fiber_internal->fiber.label, fiber_handle.index, fiber_handle.generation);
 			ygg_spinlock_lock(&fiber_internal->spinlock);
 			fiber_internal->state = Ygg_Fiber_Internal_State_Running;
 			ygg_spinlock_unlock(&fiber_internal->spinlock);
 			ygg_cpu_state_restore(fiber_internal->resume_state);
 		}
-		//printf("Thread %d: Left fiber\n", thread->thread_index);
+		// printf("Thread %d: Left fiber (idx: %d, gen: %d)\n", thread->thread_index, fiber_handle.index, fiber_handle.generation);
 		fiber_handle = (Ygg_Fiber_Handle) { };
 		fiber_internal = NULL;
 		ygg_update_thread_label("Idle");

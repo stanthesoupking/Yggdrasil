@@ -306,7 +306,9 @@ void ygg_context_resume(Ygg_Context* context) {
 		} break;
 	}
 }
-void ygg_context_suspend(Ygg_Context* context) {
+
+// NOTE: Disabling optimisations to prevent inline assembly from being shifted around
+void ygg_disable_optimisations ygg_context_suspend(Ygg_Context* context) {
 	switch (context->kind) {
 		case Ygg_Context_Kind_Fiber: {
 			Ygg_Coordinator* coordinator = context->coordinator;

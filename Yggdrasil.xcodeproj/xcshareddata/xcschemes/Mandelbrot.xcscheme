@@ -16,7 +16,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "02F3B376289AA02C00ADC971"
                BuildableName = "Yggdrasil Example"
-               BlueprintName = "Yggdrasil Example"
+               BlueprintName = "Mandelbrot"
                ReferencedContainer = "container:Yggdrasil.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -31,7 +31,7 @@
       </Testables>
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Debug"
+      buildConfiguration = "Release"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -46,7 +46,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "02F3B376289AA02C00ADC971"
             BuildableName = "Yggdrasil Example"
-            BlueprintName = "Yggdrasil Example"
+            BlueprintName = "Mandelbrot"
             ReferencedContainer = "container:Yggdrasil.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -63,7 +63,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "02F3B376289AA02C00ADC971"
             BuildableName = "Yggdrasil Example"
-            BlueprintName = "Yggdrasil Example"
+            BlueprintName = "Mandelbrot"
             ReferencedContainer = "container:Yggdrasil.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

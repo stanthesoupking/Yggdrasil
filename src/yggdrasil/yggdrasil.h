@@ -32,6 +32,14 @@ void ygg_blocking_context_destroy(Ygg_Context* blocking_context);
 Ygg_Coordinator* ygg_context_coordinator(Ygg_Context* context);
 
 // ----------------------------------
+//              Actor
+// ----------------------------------
+//typedef struct Ygg_Actor Ygg_Actor;
+//Ygg_Actor* ygg_actor_new(Ygg_Coordinator* coordinator, );
+//void ygg_actor_destroy(Ygg_Actor* actor);
+//#define ygg_actor(message_type, handler) \
+
+// ----------------------------------
 //              Fibers
 // ----------------------------------
 // As an alternative to calling the generic dispatch functions, you can
@@ -111,6 +119,7 @@ void ygg_dispatch_generic_sync(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priori
 
 // ~~~ Macro hell beyond this point, venture forth at your own risk... ~~~
 #define ygg_disable_asan __attribute__((no_sanitize("address")))
+#define ygg_disable_optimisations __attribute__((optnone))
 
 #define YGG_CONCAT(x, y) YGG_CONCAT2(x, y)
 #define YGG_CONCAT2(x, y) x ## y

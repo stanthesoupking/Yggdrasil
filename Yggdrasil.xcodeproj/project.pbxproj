@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0201024528A729BD00FF1A13 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 0201024428A729BD00FF1A13 /* main.c */; };
 		02F3B372289A9FFC00ADC971 /* yggdrasil.c in Sources */ = {isa = PBXBuildFile; fileRef = 02F3B371289A9FFC00ADC971 /* yggdrasil.c */; };
-		02F3B380289AA05400ADC971 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 02F3B37F289AA05400ADC971 /* main.c */; };
 		02F3B384289AA06400ADC971 /* libYggdrasil.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 02F3B368289A9F9A00ADC971 /* libYggdrasil.a */; };
 /* End PBXBuildFile section */
 
@@ -35,11 +35,12 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0201024328A727E600FF1A13 /* mandelbrot */ = {isa = PBXFileReference; lastKnownFileType = folder; name = mandelbrot; path = examples/mandelbrot; sourceTree = "<group>"; };
+		0201024428A729BD00FF1A13 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = main.c; path = examples/mandelbrot/main.c; sourceTree = "<group>"; };
 		02F3B368289A9F9A00ADC971 /* libYggdrasil.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libYggdrasil.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		02F3B370289A9FEC00ADC971 /* src */ = {isa = PBXFileReference; lastKnownFileType = folder; path = src; sourceTree = "<group>"; };
 		02F3B371289A9FFC00ADC971 /* yggdrasil.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = yggdrasil.c; path = src/yggdrasil/yggdrasil.c; sourceTree = "<group>"; };
-		02F3B377289AA02C00ADC971 /* Yggdrasil Example */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Yggdrasil Example"; sourceTree = BUILT_PRODUCTS_DIR; };
-		02F3B37F289AA05400ADC971 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = main.c; path = example/main.c; sourceTree = "<group>"; };
+		02F3B377289AA02C00ADC971 /* Mandelbrot */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Mandelbrot; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,11 +62,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0201024228A727CB00FF1A13 /* Mandelbrot */ = {
+			isa = PBXGroup;
+			children = (
+				0201024428A729BD00FF1A13 /* main.c */,
+				0201024328A727E600FF1A13 /* mandelbrot */,
+			);
+			name = Mandelbrot;
+			sourceTree = "<group>";
+		};
 		02F3B35F289A9F9A00ADC971 = {
 			isa = PBXGroup;
 			children = (
 				02F3B36F289A9FE200ADC971 /* Yggdrasil */,
-				02F3B37E289AA03800ADC971 /* Yggdrasil Example */,
+				02F3B37E289AA03800ADC971 /* Examples */,
 				02F3B369289A9F9A00ADC971 /* Products */,
 				02F3B383289AA06400ADC971 /* Frameworks */,
 			);
@@ -75,7 +85,7 @@
 			isa = PBXGroup;
 			children = (
 				02F3B368289A9F9A00ADC971 /* libYggdrasil.a */,
-				02F3B377289AA02C00ADC971 /* Yggdrasil Example */,
+				02F3B377289AA02C00ADC971 /* Mandelbrot */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -89,12 +99,12 @@
 			name = Yggdrasil;
 			sourceTree = "<group>";
 		};
-		02F3B37E289AA03800ADC971 /* Yggdrasil Example */ = {
+		02F3B37E289AA03800ADC971 /* Examples */ = {
 			isa = PBXGroup;
 			children = (
-				02F3B37F289AA05400ADC971 /* main.c */,
+				0201024228A727CB00FF1A13 /* Mandelbrot */,
 			);
-			name = "Yggdrasil Example";
+			name = Examples;
 			sourceTree = "<group>";
 		};
 		02F3B383289AA06400ADC971 /* Frameworks */ = {
@@ -134,9 +144,9 @@
 			productReference = 02F3B368289A9F9A00ADC971 /* libYggdrasil.a */;
 			productType = "com.apple.product-type.library.static";
 		};
-		02F3B376289AA02C00ADC971 /* Yggdrasil Example */ = {
+		02F3B376289AA02C00ADC971 /* Mandelbrot */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 02F3B37B289AA02C00ADC971 /* Build configuration list for PBXNativeTarget "Yggdrasil Example" */;
+			buildConfigurationList = 02F3B37B289AA02C00ADC971 /* Build configuration list for PBXNativeTarget "Mandelbrot" */;
 			buildPhases = (
 				02F3B373289AA02C00ADC971 /* Sources */,
 				02F3B374289AA02C00ADC971 /* Frameworks */,
@@ -147,9 +157,9 @@
 			dependencies = (
 				02F3B382289AA06000ADC971 /* PBXTargetDependency */,
 			);
-			name = "Yggdrasil Example";
+			name = Mandelbrot;
 			productName = "Yggdrasil Example";
-			productReference = 02F3B377289AA02C00ADC971 /* Yggdrasil Example */;
+			productReference = 02F3B377289AA02C00ADC971 /* Mandelbrot */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -183,7 +193,7 @@
 			projectRoot = "";
 			targets = (
 				02F3B367289A9F9A00ADC971 /* Yggdrasil */,
-				02F3B376289AA02C00ADC971 /* Yggdrasil Example */,
+				02F3B376289AA02C00ADC971 /* Mandelbrot */,
 			);
 		};
 /* End PBXProject section */
@@ -201,7 +211,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				02F3B380289AA05400ADC971 /* main.c in Sources */,
+				0201024528A729BD00FF1A13 /* main.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -331,6 +341,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = W7Z6PLYMFN;
 				EXECUTABLE_PREFIX = lib;
+				GCC_ENABLE_ASM_KEYWORD = YES;
 				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/src\"";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -343,7 +354,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = W7Z6PLYMFN;
 				EXECUTABLE_PREFIX = lib;
+				GCC_ENABLE_ASM_KEYWORD = YES;
+				GCC_OPTIMIZATION_LEVEL = s;
 				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/src\"";
+				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 			};
@@ -355,7 +369,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = W7Z6PLYMFN;
 				ENABLE_HARDENED_RUNTIME = YES;
-				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/src\"";
+				HEADER_SEARCH_PATHS = (
+					"\"$(SRCROOT)/src\"",
+					"\"$(SRCROOT)/examples/mandelbrot\"",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -366,7 +383,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = W7Z6PLYMFN;
 				ENABLE_HARDENED_RUNTIME = YES;
-				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/src\"";
+				HEADER_SEARCH_PATHS = (
+					"\"$(SRCROOT)/src\"",
+					"\"$(SRCROOT)/examples/mandelbrot\"",
+				);
+				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -392,7 +413,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		02F3B37B289AA02C00ADC971 /* Build configuration list for PBXNativeTarget "Yggdrasil Example" */ = {
+		02F3B37B289AA02C00ADC971 /* Build configuration list for PBXNativeTarget "Mandelbrot" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				02F3B37C289AA02C00ADC971 /* Debug */,
