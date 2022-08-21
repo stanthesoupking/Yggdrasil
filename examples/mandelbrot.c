@@ -5,7 +5,7 @@
 #include "yggdrasil.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+#include "vendor/stb_image_write.h"
 
 #define MANDELBROT_ORIGIN_X -0.5
 #define MANDELBROT_ORIGIN_Y 0.0
