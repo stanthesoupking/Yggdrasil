@@ -8,8 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		0201024528A729BD00FF1A13 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 0201024428A729BD00FF1A13 /* main.c */; };
-		02F3B372289A9FFC00ADC971 /* yggdrasil.c in Sources */ = {isa = PBXBuildFile; fileRef = 02F3B371289A9FFC00ADC971 /* yggdrasil.c */; };
 		02F3B384289AA06400ADC971 /* libYggdrasil.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 02F3B368289A9F9A00ADC971 /* libYggdrasil.a */; };
+		02FD46FD28B264DD008D9217 /* yggdrasil.h in Headers */ = {isa = PBXBuildFile; fileRef = 02FD46FC28B264DD008D9217 /* yggdrasil.h */; };
+		02FD46FF28B264E0008D9217 /* yggdrasil.c in Sources */ = {isa = PBXBuildFile; fileRef = 02FD46FE28B264E0008D9217 /* yggdrasil.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -38,9 +39,9 @@
 		0201024328A727E600FF1A13 /* mandelbrot */ = {isa = PBXFileReference; lastKnownFileType = folder; name = mandelbrot; path = examples/mandelbrot; sourceTree = "<group>"; };
 		0201024428A729BD00FF1A13 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = main.c; path = examples/mandelbrot/main.c; sourceTree = "<group>"; };
 		02F3B368289A9F9A00ADC971 /* libYggdrasil.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libYggdrasil.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		02F3B370289A9FEC00ADC971 /* src */ = {isa = PBXFileReference; lastKnownFileType = folder; path = src; sourceTree = "<group>"; };
-		02F3B371289A9FFC00ADC971 /* yggdrasil.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = yggdrasil.c; path = src/yggdrasil/yggdrasil.c; sourceTree = "<group>"; };
 		02F3B377289AA02C00ADC971 /* Mandelbrot */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Mandelbrot; sourceTree = BUILT_PRODUCTS_DIR; };
+		02FD46FC28B264DD008D9217 /* yggdrasil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = yggdrasil.h; sourceTree = "<group>"; };
+		02FD46FE28B264E0008D9217 /* yggdrasil.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = yggdrasil.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -93,8 +94,8 @@
 		02F3B36F289A9FE200ADC971 /* Yggdrasil */ = {
 			isa = PBXGroup;
 			children = (
-				02F3B371289A9FFC00ADC971 /* yggdrasil.c */,
-				02F3B370289A9FEC00ADC971 /* src */,
+				02FD46FC28B264DD008D9217 /* yggdrasil.h */,
+				02FD46FE28B264E0008D9217 /* yggdrasil.c */,
 			);
 			name = Yggdrasil;
 			sourceTree = "<group>";
@@ -121,6 +122,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				02FD46FD28B264DD008D9217 /* yggdrasil.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -203,7 +205,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				02F3B372289A9FFC00ADC971 /* yggdrasil.c in Sources */,
+				02FD46FF28B264E0008D9217 /* yggdrasil.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -342,7 +344,7 @@
 				DEVELOPMENT_TEAM = W7Z6PLYMFN;
 				EXECUTABLE_PREFIX = lib;
 				GCC_ENABLE_ASM_KEYWORD = YES;
-				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/src\"";
+				HEADER_SEARCH_PATHS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 			};
@@ -355,8 +357,7 @@
 				DEVELOPMENT_TEAM = W7Z6PLYMFN;
 				EXECUTABLE_PREFIX = lib;
 				GCC_ENABLE_ASM_KEYWORD = YES;
-				GCC_OPTIMIZATION_LEVEL = s;
-				HEADER_SEARCH_PATHS = "\"$(SRCROOT)/src\"";
+				HEADER_SEARCH_PATHS = "";
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
