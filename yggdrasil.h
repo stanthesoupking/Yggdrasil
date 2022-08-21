@@ -120,49 +120,51 @@ void ygg_dispatch_generic_sync(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priori
 // ~~~ Macro hell beyond this point, venture forth at your own risk... ~~~
 #define ygg_disable_asan __attribute__((no_sanitize("address")))
 #define ygg_disable_optimisations __attribute__((optnone))
+#define ygg_inline static inline
+#define ygg_unused __unused
 
 #define YGG_CONCAT(x, y) YGG_CONCAT2(x, y)
 #define YGG_CONCAT2(x, y) x ## y
 #define YGG_STRING(s) #s
 #define ygg_fiber_declare(name, function) \
-	ygg_disable_asan __unused static inline void YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap))(Ygg_Context* context, void* in_ptr, void* out_ptr) { \
+	ygg_disable_asan ygg_unused ygg_inline void YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap))(Ygg_Context* context, void* in_ptr, void* out_ptr) { \
 		void (*func_ptr)(Ygg_Context*) = function;\
 		func_ptr(context);\
 	}\
-	__unused static inline Ygg_Fiber_Handle YGG_CONCAT(name, _dispatch_async)(Ygg_Context* context, Ygg_Priority priority) {\
+	ygg_unused ygg_inline Ygg_Fiber_Handle YGG_CONCAT(name, _async)(Ygg_Context* context, Ygg_Priority priority) {\
 		Ygg_Fiber fiber = (Ygg_Fiber){ YGG_STRING(name), YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap)) };\
 		return ygg_dispatch_generic_async(context, fiber, priority, NULL, 0, NULL);\
 	}\
-	__unused static inline void YGG_CONCAT(name, _dispatch_sync)(Ygg_Context* context, Ygg_Priority priority) {\
+	ygg_unused ygg_inline void YGG_CONCAT(name, _sync)(Ygg_Context* context, Ygg_Priority priority) {\
 		Ygg_Fiber fiber = (Ygg_Fiber){ YGG_STRING(name), YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap)) };\
 		ygg_dispatch_generic_sync(context, fiber, priority, NULL, 0, NULL);\
 	}\
 
 #define ygg_fiber_declare_in(name, function, in_type) \
-	ygg_disable_asan __unused static inline void YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap))(Ygg_Context* context, void* in_ptr, void* out_ptr) { \
+	ygg_disable_asan ygg_unused ygg_inline void YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap))(Ygg_Context* context, void* in_ptr, void* out_ptr) { \
 		in_type in = *((in_type*)in_ptr);\
 		void (*func_ptr)(Ygg_Context*,in_type) = function;\
 		func_ptr(context, in);\
 	}\
-	__unused static inline Ygg_Fiber_Handle YGG_CONCAT(name, _dispatch_async)(Ygg_Context* context, Ygg_Priority priority, in_type in) {\
+	ygg_unused ygg_inline Ygg_Fiber_Handle YGG_CONCAT(name, _async)(Ygg_Context* context, Ygg_Priority priority, in_type in) {\
 		Ygg_Fiber fiber = (Ygg_Fiber){ YGG_STRING(name), YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap)) };\
 		return ygg_dispatch_generic_async(context, fiber, priority, &in, sizeof(in_type), NULL);\
 	}\
-	__unused static inline void YGG_CONCAT(name, _dispatch_sync)(Ygg_Context* context, Ygg_Priority priority, in_type in) 	{\
+	ygg_unused ygg_inline void YGG_CONCAT(name, _sync)(Ygg_Context* context, Ygg_Priority priority, in_type in) 	{\
 		Ygg_Fiber fiber = (Ygg_Fiber){ YGG_STRING(name), YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap)) };\
 		ygg_dispatch_generic_sync(context, fiber, priority, &in, 	sizeof(in_type), NULL);\
 	}\
 
 #define ygg_fiber_declare_out(name, function, out_type) \
-	ygg_disable_asan __unused static inline void YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap))(Ygg_Context* context, void* in_ptr, void* out_ptr) { \
+	ygg_disable_asan ygg_unused ygg_inline void YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap))(Ygg_Context* context, void* in_ptr, void* out_ptr) { \
 		out_type (*func_ptr)(Ygg_Context*) = function;\
 		*((out_type*)out_ptr) = func_ptr(context);\
 	}\
-	__unused static inline Ygg_Fiber_Handle YGG_CONCAT(name, _dispatch_async)(Ygg_Context* context, Ygg_Priority priority, out_type* out) {\
+	ygg_unused ygg_inline Ygg_Fiber_Handle YGG_CONCAT(name, _async)(Ygg_Context* context, Ygg_Priority priority, out_type* out) {\
 		Ygg_Fiber fiber = (Ygg_Fiber){ YGG_STRING(name), YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap)) };\
 		return ygg_dispatch_generic_async(context, fiber, priority, NULL, 0, out);\
 	}\
-	__unused static inline out_type YGG_CONCAT(name, _dispatch_sync)(Ygg_Context* context, Ygg_Priority priority) 	{\
+	ygg_unused ygg_inline out_type YGG_CONCAT(name, _sync)(Ygg_Context* context, Ygg_Priority priority) 	{\
 		out_type out;\
 		Ygg_Fiber fiber = (Ygg_Fiber){ YGG_STRING(name), YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap)) };\
 		ygg_dispatch_generic_sync(context, fiber, priority, NULL, 0, &out);\
@@ -170,16 +172,16 @@ void ygg_dispatch_generic_sync(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priori
 	}\
 
 #define ygg_fiber_declare_inout(name, function, in_type, out_type) \
-	ygg_disable_asan __unused static inline void YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap))(Ygg_Context* context, void* in_ptr, void* out_ptr) { \
+	ygg_disable_asan ygg_unused ygg_inline void YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap))(Ygg_Context* context, void* in_ptr, void* out_ptr) { \
 		in_type in = *((in_type*)in_ptr);\
 		out_type (*func_ptr)(Ygg_Context*,in_type) = function;\
 		*((out_type*)out_ptr) = func_ptr(context, in);\
 	}\
-	__unused static inline Ygg_Fiber_Handle YGG_CONCAT(name, _dispatch_async)(Ygg_Context* context, Ygg_Priority priority, in_type in, out_type* out) {\
+	ygg_unused ygg_inline Ygg_Fiber_Handle YGG_CONCAT(name, _async)(Ygg_Context* context, Ygg_Priority priority, in_type in, out_type* out) {\
 		Ygg_Fiber fiber = (Ygg_Fiber){ YGG_STRING(name), YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap)) };\
 		return ygg_dispatch_generic_async(context, fiber, priority, &in, sizeof(in_type), out);\
 	}\
-	__unused static inline out_type YGG_CONCAT(name, _dispatch_sync)(Ygg_Context* context, Ygg_Priority priority, in_type in) 	{\
+	ygg_unused ygg_inline out_type YGG_CONCAT(name, _sync)(Ygg_Context* context, Ygg_Priority priority, in_type in) 	{\
 		out_type out;\
 		Ygg_Fiber fiber = (Ygg_Fiber){ YGG_STRING(name), YGG_CONCAT(_, YGG_CONCAT(name, _bootstrap)) };\
 		ygg_dispatch_generic_sync(context, fiber, priority, &in, 	sizeof(in_type), &out);\

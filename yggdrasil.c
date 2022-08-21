@@ -16,7 +16,6 @@
 
 // MARK: Macro
 
-#define ygg_inline static inline
 #define ygg_internal static inline
 #define ygg_force_inline static inline __attribute__((always_inline))
 

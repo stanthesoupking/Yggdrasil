@@ -80,7 +80,7 @@ void _mb_gen(Ygg_Context* context) {
 				.tile_y = tile_y,
 				.pixel_data = pixel_data,
 			};
-			Ygg_Fiber_Handle fiber = mb_tile_dispatch_async(context, Ygg_Priority_Normal, tile);
+			Ygg_Fiber_Handle fiber = mb_tile_async(context, Ygg_Priority_Normal, tile);
 			ygg_counter_await_completion(counter, fiber);
 		}
 	}
@@ -89,7 +89,7 @@ void _mb_gen(Ygg_Context* context) {
 	ygg_counter_release(counter);
 	
 	printf("Writing to file\n");
-	mb_write_dispatch_sync(context, Ygg_Priority_Normal, pixel_data);
+	mb_write_sync(context, Ygg_Priority_Normal, pixel_data);
 	
 	printf("Finished\n");
 	free(pixel_data);
@@ -106,7 +106,7 @@ int main(int argc, const char * argv[]) {
 	
 	Ygg_Coordinator* coordinator = ygg_coordinator_new(parameters);
 	Ygg_Context* context = ygg_blocking_context_new(coordinator);
-	mb_gen_dispatch_sync(context, Ygg_Priority_Normal);
+	mb_gen_sync(context, Ygg_Priority_Normal);
 	ygg_blocking_context_destroy(context);
 	ygg_coordinator_destroy(coordinator);
 	
