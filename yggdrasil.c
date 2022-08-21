@@ -176,9 +176,6 @@ ygg_inline void ygg_semaphore_signal(Ygg_Semaphore* semaphore) {
 	pthread_mutex_unlock(&semaphore->mutex);
 	pthread_cond_signal(&semaphore->cond);
 }
-ygg_inline void ygg_semaphore_broadcast(Ygg_Semaphore* semaphore) {
-	pthread_cond_broadcast(&semaphore->cond);
-}
 ygg_inline void ygg_semaphore_wait(Ygg_Semaphore* semaphore) {
 	pthread_mutex_lock(&semaphore->mutex);
 	if (!semaphore->signalled) {
@@ -352,6 +349,12 @@ typedef struct Ygg_Coordinator {
 } Ygg_Coordinator;
 
 Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
+	ygg_assert(parameters.thread_count > 0, "There must be at least 1 worker thread");
+	ygg_assert(parameters.maximum_fibers > 0, "maximum_fibers must be greater than 0");
+	ygg_assert(parameters.maximum_counters > 0, "maximum_counters must be greater than 0");
+	ygg_assert(parameters.maximum_intermediaries > 0, "maximum_intermediaries must be greater than 0");
+	ygg_assert(parameters.queue_capacity > 0, "queue_capacity must be greater than 0");
+	
 	Ygg_Coordinator* coordinator = calloc(sizeof(Ygg_Coordinator), 1);
 		
 	*coordinator = (Ygg_Coordinator) {
@@ -376,8 +379,8 @@ Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters) {
 		coordinator->counter_freelist[i] = parameters.maximum_counters - i - 1;
 	}
 	
-	ygg_context_node_pool_init(&coordinator->context_node_pool, parameters.maximum_fibers);
-	ygg_counter_node_pool_init(&coordinator->counter_node_pool, parameters.maximum_fibers);
+	ygg_context_node_pool_init(&coordinator->context_node_pool, parameters.maximum_intermediaries);
+	ygg_counter_node_pool_init(&coordinator->counter_node_pool, parameters.maximum_intermediaries);
 		
 	for (unsigned int queue_index = 0; queue_index < YGG_PRIORITY_COUNT; ++queue_index) {
 		ygg_fiber_queue_init(coordinator->fiber_queues + queue_index, parameters.queue_capacity);

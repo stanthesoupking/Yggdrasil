@@ -101,6 +101,7 @@ int main(int argc, const char * argv[]) {
 		.thread_count = 8,
 		.maximum_fibers = 4096,
 		.maximum_counters = 1024,
+		.maximum_intermediaries = 1024,
 		.queue_capacity = 1024,
 	};
 	
