@@ -34,6 +34,11 @@ typedef struct Ygg_Coordinator Ygg_Coordinator;
 Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters);
 void ygg_coordinator_destroy(Ygg_Coordinator* coordinator);
 
+// Draws an instrument that contains various performance metrics to the given
+// pixel buffer (BGRA pixel format).
+//
+// NOTE: Requires the coordinator to have been created with
+//       `instrumentation_enabled` set to `true`.
 void ygg_coordinator_draw_instrument(Ygg_Coordinator* coordinator, void* buffer, unsigned int buffer_width, unsigned int buffer_height, unsigned int buffer_row_length);
 
 // ----------------------------------
