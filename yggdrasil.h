@@ -1,5 +1,5 @@
 /**
- * Yggdrasil - v1.0 - userland fiber libary.
+ * Yggdrasil - v0.1 - userland fiber libary.
  * No warranty; use at your own risk.
  *
  * For usage, see the 'examples' folder.
@@ -7,6 +7,14 @@
  * Supported compilers: clang, gnu-c
  * Supported architectures: arm64
  */
+
+#ifndef YGGDRASIL_H
+#define YGGDRASIL_H
+
+#include <stdbool.h>
+
+#define YGGDRASIL_VERSION_MAJOR 0
+#define YGGDRASIL_VERSION_MINOR 1
 
 // ----------------------------------
 //           Coordinator
@@ -18,11 +26,15 @@ typedef struct Ygg_Coordinator_Parameters {
 	unsigned int maximum_counters;
 	unsigned int maximum_intermediaries;
 	unsigned int queue_capacity;
+	
+	bool instrumentation_enabled;
 } Ygg_Coordinator_Parameters;
 
 typedef struct Ygg_Coordinator Ygg_Coordinator;
 Ygg_Coordinator* ygg_coordinator_new(Ygg_Coordinator_Parameters parameters);
 void ygg_coordinator_destroy(Ygg_Coordinator* coordinator);
+
+void ygg_coordinator_draw_instrument(Ygg_Coordinator* coordinator, void* buffer, unsigned int buffer_width, unsigned int buffer_height, unsigned int buffer_row_length);
 
 // ----------------------------------
 //             Context
@@ -188,3 +200,5 @@ void ygg_dispatch_generic_sync(Ygg_Context* context, Ygg_Fiber fiber, Ygg_Priori
 		ygg_dispatch_generic_sync(context, fiber, priority, &in, 	sizeof(in_type), &out);\
 		return out;\
 	}\
+
+#endif
