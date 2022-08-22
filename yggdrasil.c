@@ -890,7 +890,7 @@ Ygg_Semaphore* ygg_worker_thread_semaphore(Ygg_Worker_Thread* thread) {
 #define YGG_INSTRUMENT_WORKER_WINDOW_LENGTH 1024
 
 ygg_internal double ygg_instrument_now() {
-	unsigned long long nsec = clock_gettime_nsec_np(CLOCK_PROCESS_CPUTIME_ID);
+	unsigned long long nsec = clock_gettime_nsec_np(CLOCK_MONOTONIC);
 	return (double)nsec * 1e-9;
 }
 
